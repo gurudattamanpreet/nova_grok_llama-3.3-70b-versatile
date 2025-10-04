@@ -438,6 +438,15 @@ IMPORTANT EMAIL RULES:
 - Simply provide the support email (support@novarsistech.com) when needed
 - Never say things like "Could you share your email address?" or "Please provide your email"
 
+CRITICAL NOVARSIS-ONLY RULES:
+- NEVER mention or recommend any other SEO tools, services, or platforms
+- ALL SEO advice must be framed as using Novarsis SEO Tool features
+- When explaining SEO concepts, always relate them back to Novarsis functionality
+- Replace any generic SEO tool references with "Novarsis SEO Tool"
+- For example: Instead of "Use tools like SEMrush", say "Use Novarsis SEO Tool's keyword analysis feature"
+- Instead of "Check with Google Search Console", say "Use Novarsis SEO Tool's search console integration"
+- All screenshots, examples, and case studies should be from Novarsis SEO Tool
+
 FORMATTING_RULES =
 CRITICAL FORMATTING INSTRUCTIONS:
 1. ALWAYS put a space between words. Never combine words together.
@@ -458,7 +467,7 @@ When a user attaches an image containing SEO errors or issues:
 1. Analyze the screenshot/image for SEO-related errors
 2. Identify specific error messages, codes, or issues shown
 3. Provide clear explanations for each error
-4. Suggest step-by-step solutions to fix the errors
+4. Suggest step-by-step solutions to fix the errors using Novarsis SEO Tool
 5. Common SEO errors to look for:
    - Missing meta tags
    - Title/description length issues
@@ -479,14 +488,14 @@ When a user attaches an image containing SEO errors or issues:
 When analyzing error images:
 - Be specific about what error you see
 - Explain what the error means in simple terms
-- Provide actionable solutions
+- Provide actionable solutions using Novarsis SEO Tool features
 
 IMAGE ANALYSIS CAPABILITIES:
 When a user attaches an image containing SEO errors or issues:
 1. Analyze the screenshot/image for SEO-related errors
 2. Identify specific error messages, codes, or issues shown
 3. Provide clear explanations for each error
-4. Suggest step-by-step solutions to fix the errors
+4. Suggest step-by-step solutions to fix the errors using Novarsis SEO Tool
 5. Common SEO errors to look for:
    - Missing meta tags
    - Title/description length issues
@@ -507,7 +516,7 @@ When a user attaches an image containing SEO errors or issues:
 When analyzing error images:
 - Be specific about what error you see
 - Explain what the error means in simple terms
-- Provide actionable solutions
+- Provide actionable solutions using Novarsis SEO Tool features
 
 IMPORTANT: You are responding in a MOBILE APP environment. Keep responses:
 - SHORT and CONCISE (max 2-3 paragraphs)
@@ -525,16 +534,16 @@ PERSONALITY:
 
 INTRO RESPONSES:
 - Who are you? → "I'm Nova, your personal assistant for Novarsis SEO Tool. I help users with SEO analysis, reports, account issues, and technical support."
-- How can you help? → "I can help you with SEO website analysis, generating reports, fixing errors, managing subscriptions, and troubleshooting any Novarsis tool issues."
+- How can you help? → "I can help you with SEO website analysis using Novarsis SEO Tool, generating reports, fixing errors, managing subscriptions, and troubleshooting any Novarsis tool issues."
 - What can you do? → "I assist with all Novarsis features - SEO audits, competitor analysis, keyword tracking, technical issues, billing, and more."
 
 SCOPE:
 Answer ALL questions naturally, but stay within Novarsis context:
 • Greetings → Respond naturally (Hello! How can I help you today?)
 • About yourself → Explain your role as Novarsis assistant
-• Capabilities → List what you can help with
+• Capabilities → List what you can help with using Novarsis
 • Tool features → Explain Novarsis features
-• Technical help → Provide solutions
+• Technical help → Provide solutions using Novarsis
 • Account/billing → Assist with subscriptions
 
 ONLY REDIRECT for completely unrelated topics like:
@@ -580,7 +589,7 @@ WEBSITE/DOMAIN FORMATTING RULES:
 - When user provides a website like "example.com", always refer to it EXACTLY as "example.com"
 - Never add spaces in domain names: website.com ✓, website. com ✗, website.Com ✗
 - Preserve exact domain formatting from user input
-- IMPORTANT: When instructing to enter a website, write it as "enter example.com" NOT "enter example. Com"
+- IMPORTANT: When instructing to enter a website, write it as "enter example.com and tap Start" NOT "enter example. Com"
 - Always double-check domain formatting before sending response
 - Examples of CORRECT formatting:
   * "enter example.com and tap Start"
@@ -598,7 +607,7 @@ SPECIAL INSTRUCTIONS:
    - Or provide: "Our experts can help you. Please contact: support@novarsistech.com" (NOT support@support@novarsistech.com)
    - NEVER write the email as support@support@ - always write it as support@novarsistech.com
    - NEVER say "Could you share your email address?" or similar
-2. If the user asks for SEO analysis of a website, do not perform the analysis. Instead, guide them on how to do it in the Novarsis tool and provide general troubleshooting steps if they face issues.
+2. If the user asks for SEO analysis of a website, guide them on how to do it in the Novarsis tool and provide general troubleshooting steps if they face issues.
 3. IMPORTANT: When user asks about features of the tool, ONLY list the features. DO NOT mention pricing plans unless specifically asked about pricing, plans, or costs. Features include:
    ✓ Site audits & issue detection
    ✓ Keyword research & tracking
@@ -1068,8 +1077,8 @@ def call_groq_api(prompt: str, image_data: Optional[str] = None) -> str:
 
         # Prepare simplified messages for Groq
         # Use a shorter system prompt to avoid token limits
-        simplified_system = """You are Nova, an AI assistant for Novarsis SEO Tool. Help users with SEO analysis, reports, and technical support. Keep responses concise and mobile-friendly. Support email: support@novarsistech.com"""
-        
+        simplified_system = """You are Nova, an AI assistant for Novarsis SEO Tool. Help users with SEO analysis, reports, and technical support. Keep responses concise and mobile-friendly. Support email: support@novarsistech.com. NEVER mention or recommend other SEO tools."""
+
         if image_data:
             # Note: Groq models may not support vision/images directly
             messages = [{
@@ -1077,7 +1086,7 @@ def call_groq_api(prompt: str, image_data: Optional[str] = None) -> str:
                 "content": simplified_system
             }, {
                 "role": "user",
-                "content": f"{prompt}\n\n[User has attached an image showing SEO errors. Provide general SEO error solutions.]"
+                "content": f"{prompt}\n\n[User has attached an image showing SEO errors. Provide general SEO error solutions using Novarsis SEO Tool.]"
             }]
         else:
             messages = [{
@@ -1123,12 +1132,12 @@ def call_groq_api(prompt: str, image_data: Optional[str] = None) -> str:
             else:
                 logger.error(f"Unexpected response format: {result}")
                 return "Response format unexpected. Please try again."
-        
+
         elif response.status_code == 400:
             # Log the error details for debugging
             error_detail = response.json() if response.text else {}
             logger.error(f"Bad Request (400): {error_detail}")
-            
+
             # Check for specific error messages
             if "error" in error_detail:
                 error_msg = error_detail.get("error", {}).get("message", "")
@@ -1138,7 +1147,7 @@ def call_groq_api(prompt: str, image_data: Optional[str] = None) -> str:
                     return "Model not available. Please check if the model name is correct."
                 else:
                     logger.error(f"Groq error message: {error_msg}")
-            
+
             return "Request format error. Please try again or contact support@novarsistech.com"
 
         elif response.status_code == 404:
@@ -1257,9 +1266,9 @@ def format_pricing_plans(text: str) -> str:
                     break
 
         # Clean up any remaining formatting issues (NO ASTERISKS)
-        text = re.sub(r'(Free Plan:?)\s*([•\-])?\s*', r'\n\nFree Plan\n', text, flags=re.IGNORECASE)
-        text = re.sub(r'(Pro Plan:?)\s*([•\-])?\s*', r'\n\nPro Plan\n', text, flags=re.IGNORECASE)
-        text = re.sub(r'(Enterprise:?)\s*([•\-])?\s*', r'\n\nEnterprise\n', text, flags=re.IGNORECASE)
+        text = re.sub(r'(Free Plan:?)\s*([•\-])?\s*', r'\1\n\nFree Plan\n', text, flags=re.IGNORECASE)
+        text = re.sub(r'(Pro Plan:?)\s*([•\-])?\s*', r'\1\n\nPro Plan\n', text, flags=re.IGNORECASE)
+        text = re.sub(r'(Enterprise:?)\s*([•\-])?\s*', r'\1\n\nEnterprise\n', text, flags=re.IGNORECASE)
 
         # Fix bullet points in pricing - ensure they're on new lines
         text = re.sub(r'([^\n])•', r'\1\n• ', text)
@@ -1754,6 +1763,34 @@ def fix_email_format(text: str) -> str:
     return text
 
 
+def filter_other_tools(text: str) -> str:
+    """Filter out mentions of other SEO tools and replace with Novarsis references"""
+    # List of competitor tools to filter out
+    competitor_tools = [
+        'SEMrush', 'Ahrefs', 'Moz', 'Screaming Frog', 'Google Search Console',
+        'GTmetrix', 'PageSpeed Insights', 'Schema.org', 'Yoast SEO',
+        'Rank Math', 'Ubersuggest', 'Majestic', 'Serpstat', 'SpyFu'
+    ]
+
+    # Replace mentions of competitor tools with Novarsis SEO Tool
+    for tool in competitor_tools:
+        # Pattern to match the tool name (case insensitive)
+        pattern = re.compile(rf'\b{re.escape(tool)}\b', re.IGNORECASE)
+
+        # Replace with Novarsis SEO Tool
+        text = pattern.sub('Novarsis SEO Tool', text)
+
+    # Also handle generic phrases like "other tools" or "external tools"
+    text = re.sub(r'\b(other|external|third-party)\s+(tools|software|platforms)\b',
+                  'Novarsis SEO Tool features', text, flags=re.IGNORECASE)
+
+    # Handle phrases like "use tools like" or "tools such as"
+    text = re.sub(r'\btools\s+(like|such as)\s+[A-Z][a-zA-Z\s]+\b',
+                  'Novarsis SEO Tool', text, flags=re.IGNORECASE)
+
+    return text
+
+
 def get_ai_response(user_input: str, image_data: Optional[str] = None, chat_history: list = None) -> str:
     try:
         # Get FAST MCP instance
@@ -1829,7 +1866,7 @@ Please let me know if you have any SEO tool related questions?"""
             2. For each error, provide:
                - The exact error message or issue type
                - A clear explanation of what this error means
-               - Step-by-step instructions to fix the error
+               - Step-by-step instructions to fix the error using Novarsis SEO Tool
             3. If multiple errors are visible, address each one separately
             4. Use simple, non-technical language where possible
             5. If you cannot identify specific SEO errors in the image, ask the user to describe what error they're experiencing
@@ -1849,7 +1886,7 @@ Please let me know if you have any SEO tool related questions?"""
             Format your response clearly with the error type as a header, followed by explanation and solution."""
 
             # For Groq, use simpler prompt without full system prompt (already in API call)
-            prompt = f"{context}\n\nUser query with SEO error screenshot: {user_input}\n\nAnalyze the attached image for SEO-related errors and provide solutions."
+            prompt = f"{context}\n\nUser query with SEO error screenshot: {user_input}\n\nAnalyze the attached image for SEO-related errors and provide solutions using Novarsis SEO Tool."
         else:
             # For Groq, use simpler prompt
             prompt = f"User query: {user_input}"
@@ -1995,8 +2032,6 @@ Have I resolved your query?"""
                 rf'{username[-2:] if len(username) > 2 else username}@{re.escape(domain)}',
                 # Any short variation with the domain
                 rf'\b\w{{1,5}}@{re.escape(domain)}',
-                # Domain with capitalization issues
-                rf'[a-zA-Z0-9._%+-]*@{domain.split(".")[0]}\s*\.\s*[Cc]om',
                 # The word "email" followed by truncated version
                 rf'email\s+\w{{1,5}}@{re.escape(domain)}',
                 # Any mention of partial username@domain
@@ -2046,30 +2081,6 @@ Have I resolved your query?"""
         # Fix user emails that got corrupted (e.g., "gbgbnd@gmail. Com" -> "gbgbnd@gmail.com")
         response_text = re.sub(r'@([a-zA-Z0-9.-]+)\s+\.\s*([Cc][Oo][Mm]|[Cc]om|[Nn]et|[Oo]rg|[Ii]n|[Ii]o)', r'@\1.\2',
                                response_text)
-
-        # Fix support@ duplication EARLY - Multiple patterns to catch all variations
-        response_text = re.sub(r'support@support@novarsistech\.com', 'support@novarsistech.com', response_text,
-                               flags=re.IGNORECASE)
-        response_text = re.sub(r'support@support@', 'support@', response_text, flags=re.IGNORECASE)
-        response_text = re.sub(r'email:\s*support@support@', 'email: support@', response_text, flags=re.IGNORECASE)
-        response_text = re.sub(r'contact:\s*support@support@', 'contact: support@', response_text, flags=re.IGNORECASE)
-
-        # Fix the specific pattern: "you can email: support@support@..."
-        response_text = re.sub(r'(you can email|can email|email them at|reach them at)\s*:\s*support@support@',
-                               r'\1: support@', response_text, flags=re.IGNORECASE)
-
-        # Fix Contact Us: support@support@ pattern
-        response_text = re.sub(r'(Contact\s+Us\s*:\s*)support@support@', r'\1support@', response_text,
-                               flags=re.IGNORECASE)
-
-        # Fix any sentence ending with support@support@
-        response_text = re.sub(r'(email|contact|reach|write to)\s*:\s*support@support@', r'\1: support@', response_text,
-                               flags=re.IGNORECASE)
-
-        # Fix patterns where space got inserted in domain (gmail. com -> gmail.com)
-        response_text = re.sub(
-            r'@(gmail|yahoo|hotmail|outlook|aol|icloud|proton|mail|email)\s*\.\s*([Cc]om|[Nn]et|[Oo]rg)', r'@\1.\2',
-            response_text, flags=re.IGNORECASE)
 
         # If user_email exists, do a final pass to ensure it's correctly formatted everywhere
         if user_email:
@@ -2342,6 +2353,9 @@ Enterprise
             wrong_domain = f'{domain_name} . {domain_ext.capitalize()}'
             response_text = response_text.replace(wrong_domain, clean_domain)
 
+        # CRITICAL: Filter out mentions of other SEO tools
+        response_text = filter_other_tools(response_text)
+
         return response_text.strip()
     except Exception as e:
         logger.error(f"Error generating AI response: {str(e)}")
@@ -2358,8 +2372,8 @@ async def test_model():
     """Test current Ollama model and show configuration"""
     return {
         "status": "ready",
-        "current_model": OLLAMA_MODEL,
-        "api_endpoint": OLLAMA_BASE_URL,
+        "current_model": GROQ_MODEL,
+        "api_endpoint": GROQ_BASE_URL,
         "hosted_service": USE_HOSTED_OLLAMA,
         "test_message": "Model is ready! Send a POST request to /chat with your message.",
         "available_models": [

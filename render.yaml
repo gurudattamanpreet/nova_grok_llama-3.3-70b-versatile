@@ -1,0 +1,178 @@
+services:
+  # ================== WEB SERVICE CONFIGURATION ==================
+  - type: web
+    name: novarsis-chatbot
+    runtime: python
+    region: oregon
+    plan: free
+    
+    # IMPORTANT: Set Python version
+    pythonVersion: "3.11"
+    
+    # Build Configuration
+    buildCommand: |
+      python --version
+      pip install --upgrade pip setuptools wheel
+      pip install fastapi uvicorn python-dotenv requests pymongo certifi jinja2 aiofiles python-multipart pydantic
+    
+    startCommand: python -m uvicorn novars2:app --host 0.0.0.0 --port $PORT --workers 1
+    
+    # Health Check
+    healthCheckPath: /test-model
+    
+    # Environment Variables (Add your actual values in Render dashboard)
+    envVars:
+      # ================== OLLAMA MODEL SELECTION ==================
+      # Choose ONE model by setting OLLAMA_MODEL in Render dashboard
+      
+      # Option 1: Fast & Balanced (RECOMMENDED FOR START)
+      - key: OLLAMA_MODEL
+        value: gpt-oss:20b-cloud
+        
+      # Option 2: Best Quality (Change in dashboard if needed)
+      # - key: OLLAMA_MODEL
+      #   value: gpt-oss:120b-cloud
+        
+      # Option 3: Advanced Reasoning (For complex queries)
+      # - key: OLLAMA_MODEL
+      #   value: deepseek-v3.1:671b-cloud
+        
+      # Option 4: Coding Focus
+      # - key: OLLAMA_MODEL
+      #   value: qwen3-coder:480b-cloud
+      
+      # ================== OLLAMA API CONFIGURATION ==================
+      - key: OLLAMA_API_KEY
+        sync: false  # Set this in Render dashboard for security
+        
+      - key: OLLAMA_BASE_URL
+        value: https://ollama.com
+        
+      - key: USE_HOSTED_OLLAMA
+        value: true
+      
+      # ================== MONGODB CONFIGURATION ==================
+      - key: MONGODB_URI
+        sync: false  # Set this in Render dashboard for security
+      
+      # ================== APPLICATION SETTINGS ==================
+      - key: APP_NAME
+        value: Novarsis Support Center
+        
+      - key: APP_ENV
+        value: production
+        
+      - key: DEBUG
+        value: false
+        
+      - key: LOG_LEVEL
+        value: INFO
+      
+      # ================== PYTHON SETTINGS ==================
+      - key: PYTHON_VERSION
+        value: 3.11.9
+        
+      - key: PIP_VERSION
+        value: 23.3.1
+      
+      # ================== RENDER AUTO-SCALING ==================
+      - key: WEB_CONCURRENCY
+        value: 2
+        
+      - key: MAX_THREADS
+        value: 4
+    
+    # Auto-Deploy Settings
+    autoDeploy: true  # Auto-deploy on push to main branch
+    
+    # Scaling Configuration (for paid plans)
+    # numInstances: 1  # Number of instances (paid plans only)
+    # scaling:
+    #   minInstances: 1
+    #   maxInstances: 3
+    #   targetCPUPercent: 60
+    
+    # Docker Configuration (if using Docker)
+    # dockerfilePath: ./Dockerfile
+    # dockerContext: .
+    
+    # Private Service (if needed)
+    # private: false
+    
+    # Custom Domain (add after deployment)
+    # customDomains:
+    #   - domain: chatbot.yourdomain.com
+    #     verificationStatus: pending
+
+# ================== STATIC SITE (if you have frontend) ==================
+# Uncomment if you have a separate frontend
+# - type: static
+#   name: novarsis-chatbot-frontend
+#   buildCommand: npm run build
+#   staticPublishPath: ./dist
+#   headers:
+#     - path: /*
+#       name: X-Frame-Options
+#       value: SAMEORIGIN
+#   routes:
+#     - type: rewrite
+#       source: /*
+#       destination: /index.html
+
+# ================== BACKGROUND WORKER (if needed) ==================
+# Uncomment if you need background tasks
+# - type: worker
+#   name: novarsis-worker
+#   runtime: python
+#   buildCommand: pip install -r requirements.txt
+#   startCommand: python worker.py
+#   envVars:
+#     - key: WORKER_TYPE
+#       value: background
+
+# ================== CRON JOB (if needed) ==================
+# Uncomment if you need scheduled tasks
+# - type: cron
+#   name: novarsis-daily-cleanup
+#   runtime: python
+#   schedule: "0 0 * * *"  # Daily at midnight
+#   buildCommand: pip install -r requirements.txt
+#   startCommand: python cleanup.py
+
+# ================== REDIS (if needed) ==================
+# Uncomment if you need Redis for caching
+# - type: redis
+#   name: novarsis-redis
+#   plan: free  # Options: free, starter, standard, pro
+#   maxMemoryPolicy: allkeys-lru
+#   ipAllowList: []  # Allow connections from all Render services
+
+# ================== POSTGRESQL (if needed) ==================
+# Uncomment if you prefer PostgreSQL over MongoDB
+# - type: postgres
+#   name: novarsis-db
+#   plan: free  # Options: free, starter, standard, pro
+#   databaseName: novarsis_chatbot
+#   user: novarsis_admin
+#   ipAllowList: []  # Allow connections from all Render services
+
+# ================== DEPLOYMENT NOTES ==================
+# 1. Push this file to your repository root
+# 2. Connect your GitHub repo to Render
+# 3. Render will automatically detect this file
+# 4. Set sensitive environment variables in Render dashboard:
+#    - OLLAMA_API_KEY
+#    - MONGODB_URI (if using)
+#    - SECRET_KEY (generate a secure one)
+# 5. Choose your preferred OLLAMA_MODEL in environment variables
+# 6. Deploy and monitor logs for any issues
+
+# ================== MODEL QUICK SWITCH GUIDE ==================
+# To switch models after deployment:
+# 1. Go to Render Dashboard > Environment
+# 2. Change OLLAMA_MODEL value to:
+#    - gpt-oss:20b-cloud (fastest)
+#    - gpt-oss:120b-cloud (balanced)
+#    - deepseek-v3.1:671b-cloud (best reasoning)
+#    - qwen3-coder:480b-cloud (best for code)
+# 3. Save and Render will auto-redeploy

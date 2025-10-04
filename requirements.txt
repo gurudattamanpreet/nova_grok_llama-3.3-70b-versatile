@@ -1,0 +1,12 @@
+# Core Dependencies - MINIMAL
+fastapi
+uvicorn
+python-multipart
+pydantic
+python-dotenv
+requests
+pymongo
+certifi
+jinja2
+aiofiles
+# Pillow  # REMOVED - Not needed if not using image processing

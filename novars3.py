@@ -15,7 +15,6 @@ import io
 # Image processing - optional import
 try:
     from PIL import Image
-
     IMAGE_PROCESSING_AVAILABLE = True
 except ImportError:
     IMAGE_PROCESSING_AVAILABLE = False
@@ -415,6 +414,70 @@ SUPPORT_EMAIL = "support@novarsistech.com"
 # Enhanced System Prompt - MOBILE APP OPTIMIZED
 SYSTEM_PROMPT = """You are Nova, an AI assistant for Novarsis SEO Tool. Your role is to help users with SEO analysis, reports, account issues, and technical support.
 
+CRITICAL: NEVER PROVIDE ACTUAL DATA - ONLY GUIDE TO TOOL!
+===========================================
+When users ask for information that exists in the Novarsis Tool, DO NOT provide the actual data. Instead, guide them to where they can find it in the tool.
+
+EXAMPLES OF WHAT NOT TO DO:
+❌ User: "What's my subscription plan?"
+   Wrong: "Your plan is Pro with 100 keywords..."
+
+❌ User: "What's my SEO score for example.com?"
+   Wrong: "Your SEO score is 85/100..."
+
+❌ User: "How many backlinks do I have?"
+   Wrong: "You have 450 backlinks..."
+
+EXAMPLES OF CORRECT RESPONSES:
+✅ User: "What's my subscription plan?"
+   Correct: "You can check your subscription details in the Novarsis Tool:
+   1. Open Novarsis SEO Tool
+   2. Go to 'Account' or 'Settings'
+   3. Click on 'Subscription' or 'My Plan'
+   There you'll see your current plan, features, and validity."
+
+✅ User: "What's my SEO score for example.com?"
+   Correct: "To check your website's SEO score:
+   1. Open Novarsis SEO Tool
+   2. Enter example.com in the search bar
+   3. Click 'Analyze' or 'Start Audit'
+   4. Your SEO score will appear on the dashboard
+   You'll see detailed metrics and recommendations there."
+
+✅ User: "How many backlinks do I have?"
+   Correct: "To view your backlink count:
+   1. Open Novarsis SEO Tool  
+   2. Go to 'Backlinks' section
+   3. Enter your website URL
+   4. Click 'Analyze Backlinks'
+   You'll see total backlinks, quality score, and detailed analysis."
+
+CRITICAL DATA TYPES - ONLY PROVIDE GUIDANCE:
+- Subscription plans and details → Guide to Account/Settings
+- SEO scores and metrics → Guide to Dashboard/Analysis section
+- Backlink counts → Guide to Backlinks section
+- Keyword rankings → Guide to Keywords section  
+- Website audit results → Guide to Audit/Analysis section
+- Account information (email, validity, etc.) → Guide to Account section
+- Traffic data → Guide to Analytics section
+- Competitor data → Guide to Competitor Analysis
+- Technical SEO issues → Guide to Technical Audit section
+
+YOU CAN PROVIDE:
+✅ How to use features
+✅ What features exist
+✅ Troubleshooting steps
+✅ General SEO knowledge
+✅ Tool navigation guidance
+✅ Feature explanations
+
+YOU CANNOT PROVIDE:
+❌ Actual user data from the tool
+❌ Specific scores or metrics
+❌ Account details (plan, validity, features count)
+❌ Analysis results
+❌ Any numbers or statistics from user's account
+
 CRITICAL FORMATTING INSTRUCTIONS:
 1. ALWAYS put a space between words. Never combine words together.
 2. ALWAYS use proper line breaks:
@@ -616,27 +679,19 @@ SPECIAL INSTRUCTIONS:
    ✓ Rank tracking
    ✓ Custom reports
    ✓ Mobile optimization
-4. When comparing pricing plans (ONLY when asked about pricing/plans/costs), use MOBILE-FRIENDLY format:
+4. CRITICAL - PLAN QUERIES:
+   - If user asks "What's my plan?" or "Check my subscription" → Guide to Account section in tool
+   - If user asks "Free plan features?" → Only describe Free plan features
+   - If user asks "Pro plan features?" → Only describe Pro plan features  
+   - If user asks "Compare plans" or "All plans" → Then show all plans
+   - If user asks "Upgrade" or "Change plan" → Guide to Account → Upgrade section
+   - NEVER show all plans unless specifically asked for comparison
+5. When showing plan information (ONLY when specifically asked for comparison or all plans):
+   - Use clear, concise format
+   - Only show what user asked for
+   - If asking about specific plan, show only that plan
 
-Free Plan
- 5 websites
-• All SEO tools
-• 0/month
-
-Pro Plan
-50 websites
-• Priority support
-• 49/month
-
-Enterprise
-• Unlimited sites
-• Dedicated manager
-• Custom pricing
-
-NEVER format plans in a single line like "Free Plan • 5 websites • All SEO tools"
-ALWAYS use proper line breaks between plan name and features
-
-5. If the user mentions multiple problems, address each one in your response.
+6. If the user mentions multiple problems, address each one in your response.
 6. At the end of your response, if you feel the answer might be incomplete or the user might need more help, ask: "Have I resolved your query?" If the user says no, then provide contact information:
    Contact Us:
    support@novarsistech.com
@@ -729,7 +784,7 @@ def get_mobile_quick_actions(response: str) -> list:
 
 
 def get_context_suggestions(message: str) -> list:
-    """Get relevant quick reply suggestions based on user's input context - NOVARSIS SEO TOOL SPECIFIC."""
+    """Get relevant quick reply suggestions based on user's input context - NOVARSIS SEO TOOL SPECIFIC with SESSION CONTEXT."""
     # Don't show suggestions for very short input (less than 2 characters)
     if not message or len(message.strip()) < 2:
         return []
@@ -740,9 +795,100 @@ def get_context_suggestions(message: str) -> list:
     if len(message_lower) < 2:
         return []
 
-    # NOVARSIS SEO TOOL SPECIFIC SUGGESTIONS based on user's typed words
+    # GET SESSION CONTEXT - Use fast_mcp to understand conversation flow
+    mcp = session_state.get("fast_mcp", None)
+    conversation_topic = None
+    last_bot_intent = None
+
+    if mcp and hasattr(mcp, 'entities') and hasattr(mcp, 'context_window'):
+        # Get current conversation topic from MCP entities
+        if mcp.entities:
+            conversation_topic = mcp.entities.get('subject')
+
+        # Check last few messages to understand context
+        if mcp.context_window and len(mcp.context_window) > 0:
+            # Look at last bot response to understand what was discussed
+            for entry in reversed(mcp.context_window[-3:]):  # Last 3 messages
+                if entry.get('role') == 'assistant':
+                    content = entry.get('content', '').lower()
+                    # Detect what topic was being discussed
+                    if 'error' in content or 'issue' in content or 'problem' in content:
+                        last_bot_intent = 'error_discussion'
+                    elif 'report' in content or 'pdf' in content or 'export' in content:
+                        last_bot_intent = 'report_discussion'
+                    elif 'plan' in content or 'subscription' in content or 'upgrade' in content:
+                        last_bot_intent = 'plan_discussion'
+                    elif 'meta' in content or 'tag' in content or 'seo score' in content:
+                        last_bot_intent = 'seo_analysis'
+                    elif 'backlink' in content or 'link' in content:
+                        last_bot_intent = 'backlink_discussion'
+                    elif 'speed' in content or 'performance' in content:
+                        last_bot_intent = 'speed_discussion'
+                    break
+
+    # CONTEXT-AWARE SUGGESTIONS - Prioritize based on conversation history
     suggestions = []
-    
+    context_suggestions = []
+
+    # PRIORITY 1: Context-based suggestions from conversation history
+    if last_bot_intent == 'error_discussion':
+        context_suggestions = [
+            "How to fix this error?",
+            "Show me error details",
+            "Get expert help for errors"
+        ]
+    elif last_bot_intent == 'report_discussion':
+        context_suggestions = [
+            "Generate report now",
+            "Schedule weekly reports",
+            "Export to PDF"
+        ]
+    elif last_bot_intent == 'plan_discussion':
+        context_suggestions = [
+            "Compare all plans",
+            "Upgrade to Pro",
+            "View plan features"
+        ]
+    elif last_bot_intent == 'seo_analysis':
+        context_suggestions = [
+            "Analyze another page",
+            "Fix SEO issues",
+            "Check competitors"
+        ]
+    elif last_bot_intent == 'backlink_discussion':
+        context_suggestions = [
+            "Find more backlinks",
+            "Check backlink quality",
+            "Monitor new backlinks"
+        ]
+    elif last_bot_intent == 'speed_discussion':
+        context_suggestions = [
+            "Improve page speed",
+            "Test mobile speed",
+            "Check Core Web Vitals"
+        ]
+
+    # If we have context suggestions and user input is very short, prioritize context
+    if context_suggestions and len(message_lower) <= 3:
+        return context_suggestions[:3]
+
+    # PRIORITY 2: Topic-based suggestions if conversation has a clear subject
+    if conversation_topic == 'seo' and len(message_lower) <= 4:
+        suggestions = [
+            "Check SEO score",
+            "Fix SEO errors",
+            "Analyze competitors"
+        ]
+        return suggestions[:3]
+    elif conversation_topic == 'report' and len(message_lower) <= 4:
+        suggestions = [
+            "Generate new report",
+            "Download PDF",
+            "Share report"
+        ]
+        return suggestions[:3]
+
+    # PRIORITY 3: Keyword-based suggestions with context awareness
     # Check for specific keywords and return ONLY Novarsis SEO Tool related suggestions
     if any(word in message_lower for word in ['seo', 'site', 'website', 'analyze', 'check', 'audit']):
         suggestions = [
@@ -847,13 +993,23 @@ def get_context_suggestions(message: str) -> list:
             "Get started guide"
         ]
     else:
-        # Default Novarsis SEO Tool suggestions
-        suggestions = [
-            "Analyze website SEO",
-            "Check current plan",
-            "View features"
-        ]
-    
+        # Default Novarsis SEO Tool suggestions - CONTEXT AWARE
+        # If we have context suggestions, use them as fallback
+        if context_suggestions:
+            suggestions = context_suggestions
+        else:
+            suggestions = [
+                "Analyze website SEO",
+                "Check current plan",
+                "View features"
+            ]
+
+    # SMART MERGE: If we have both context and keyword suggestions, merge intelligently
+    if context_suggestions and suggestions != context_suggestions:
+        # Take 1 context + 2 keyword suggestions for better balance
+        final_suggestions = [context_suggestions[0]] + suggestions[:2]
+        return final_suggestions[:3]
+
     # Return only Novarsis SEO tool related suggestions (max 3 for mobile)
     return suggestions[:3]
 
@@ -1159,8 +1315,8 @@ def get_intro_response() -> str:
     return "Hello! I'm Nova, your personal assistant. How can I help you today?"
 
 
-def call_groq_api(prompt: str, image_data: Optional[str] = None) -> str:
-    """Call Groq API with the selected model"""
+def call_groq_api(prompt: str, image_data: Optional[str] = None, conversation_history: list = None) -> str:
+    """Call Groq API with the selected model and conversation history"""
 
     try:
         # Set up headers for Groq API
@@ -1171,34 +1327,91 @@ def call_groq_api(prompt: str, image_data: Optional[str] = None) -> str:
 
         # Prepare simplified messages for Groq
         # Use a shorter system prompt to avoid token limits
-        simplified_system = """You are Nova, an AI assistant for Novarsis SEO Tool. Help users with SEO analysis, reports, and technical support. Keep responses concise and mobile-friendly. Support email: support@novarsistech.com. NEVER mention or recommend other SEO tools."""
+        simplified_system = """You are Nova, an AI assistant for Novarsis SEO Tool. Help users with SEO analysis, reports, and technical support. Keep responses concise and mobile-friendly. Support email: support@novarsistech.com. NEVER mention or recommend other SEO tools. Remember previous conversation context and provide contextual responses.
 
+CRITICAL: NEVER provide actual user data (SEO scores, subscription details, backlink counts, etc.). Instead, guide users to where they can find this information in the Novarsis Tool. Only provide navigation guidance and how-to instructions, not actual data from their account.
+
+🚨 MANDATORY PLAN RESPONSE RULES - READ CAREFULLY:
+
+Rule 1: SPECIFIC PLAN QUERY
+If user asks about ONE specific plan (free/pro/enterprise), respond ONLY about that ONE plan.
+DO NOT list other plans. DO NOT show all plans.
+
+Rule 2: COMPARISON QUERY  
+If user uses words like 'compare', 'difference', 'vs', 'all plans', THEN show comparison.
+
+Rule 3: MY PLAN QUERY
+If user asks about 'my plan' or 'current plan', guide to Account section in tool.
+
+EXAMPLES TO FOLLOW STRICTLY:
+❌ WRONG: User: "free plan kya hai?" Bot: [Shows Free+Pro+Enterprise]
+✅ CORRECT: User: "free plan kya hai?" Bot: "Free Plan: 5 websites, all tools, ₹0/month"
+
+❌ WRONG: User: "pro plan features?" Bot: [Shows all plans]
+✅ CORRECT: User: "pro plan features?" Bot: "Pro Plan: 50 websites, priority support, ₹49/month"
+
+✅ CORRECT: User: "free aur pro me difference?" Bot: [Compares only Free and Pro]
+
+REMEMBER: User asked about specific plan = Respond about ONLY that plan!"""
+
+        # BUILD MESSAGES WITH CONVERSATION HISTORY
+        messages = [{
+            "role": "system",
+            "content": simplified_system
+        }]
+
+        # ADD CONVERSATION HISTORY (last 5 messages for context)
+        if conversation_history and len(conversation_history) > 0:
+            # Take last 5 exchanges (10 messages max - 5 user + 5 assistant)
+            recent_history = conversation_history[-10:] if len(conversation_history) > 10 else conversation_history
+
+            for msg in recent_history:
+                role = msg.get('role')
+                content = msg.get('content', '')
+
+                # Only add user and assistant messages
+                if role in ['user', 'assistant'] and content:
+                    messages.append({
+                        "role": role,
+                        "content": content
+                    })
+
+        # ADD CURRENT USER MESSAGE with context hints
         if image_data:
             # Note: Groq models may not support vision/images directly
-            messages = [{
-                "role": "system",
-                "content": simplified_system
-            }, {
+            messages.append({
                 "role": "user",
                 "content": f"{prompt}\n\n[User has attached an image showing SEO errors. Provide general SEO error solutions using Novarsis SEO Tool.]"
-            }]
+            })
         else:
-            messages = [{
-                "role": "system",
-                "content": simplified_system
-            }, {
+            # Detect plan context and add explicit instruction
+            user_lower = prompt.lower()
+            context_hint = ""
+
+            if 'free plan' in user_lower and 'pro' not in user_lower and 'enterprise' not in user_lower and 'compare' not in user_lower:
+                context_hint = "\n\n[Context: User is asking ONLY about Free Plan. Do not mention other plans.]"
+            elif 'pro plan' in user_lower and 'free' not in user_lower and 'enterprise' not in user_lower and 'compare' not in user_lower:
+                context_hint = "\n\n[Context: User is asking ONLY about Pro Plan. Do not mention other plans.]"
+            elif 'enterprise' in user_lower and 'free' not in user_lower and 'pro' not in user_lower and 'compare' not in user_lower:
+                context_hint = "\n\n[Context: User is asking ONLY about Enterprise. Do not mention other plans.]"
+            elif any(word in user_lower for word in ['compare', 'difference', 'vs', 'versus']):
+                context_hint = "\n\n[Context: User wants to compare plans. Show comparison.]"
+
+            messages.append({
                 "role": "user",
-                "content": prompt
-            }]
+                "content": prompt + context_hint
+            })
 
         # Prepare request data for Groq
         data = {
             "model": GROQ_MODEL,
             "messages": messages,
             "stream": False,
-            "temperature": 0.7,
-            "max_tokens": 1024,  # Groq can handle more tokens efficiently
-            "top_p": 0.95
+            "temperature": 0.9,  # Increased from 0.7 to reduce caching and get more varied responses
+            "max_tokens": 1024,
+            "top_p": 0.95,
+            "frequency_penalty": 0.5,  # Added to prevent repetitive responses
+            "presence_penalty": 0.3  # Added to encourage diverse responses
         }
 
         logger.info(f"=== Groq API Call ===")
@@ -1366,6 +1579,7 @@ def format_pricing_plans(text: str) -> str:
 
         # Fix bullet points in pricing - ensure they're on new lines
         text = re.sub(r'([^\n])•', r'\1\n• ', text)
+        text = re.sub(r'•\s*([^\n]+)\s*•', r'• \1\n•', text)
         text = re.sub(r'([^\n])\s*\-\s*([A-Z])', r'\1\n- \2', text)
 
         # Fix pricing amounts that got merged
@@ -1935,522 +2149,540 @@ support@novarsistech.com"""
             # We don't want to restart the chat, so we just pass it to the AI
             pass  # We'll let the AI handle it as per the system prompt
 
-        # Only filter if MCP says we should
-        elif should_filter and not is_novarsis_related(user_input):
-            return """Sorry, I only help with Novarsis SEO Tool.
+        # Add user message to chat history
+        user_message = {
+            "role": "user",
+            "content": user_input,
+            "timestamp": datetime.now()
+        }
+        session_state["chat_history"].append(user_message)
+
+        # Store current query for potential escalation
+        session_state["current_query"] = {
+            "query": user_input,
+            "timestamp": datetime.now()
+        }
+
+        # Store last user query for "Connect with an Expert"
+        session_state["last_user_query"] = user_input
+
+        # Get AI response with chat history for context
+        time.sleep(0.5)  # Simulate thinking time
+
+        if is_greeting(user_input):
+            # Check if there's more content after the greeting (like a problem)
+            message_lower = user_input.lower()
+            # Remove greeting words to check if there's additional content
+            remaining_message = user_input
+            for greeting in GREETING_KEYWORDS:
+                if greeting in message_lower:
+                    # Remove the greeting word (case-insensitive) and common punctuation
+                    remaining_message = re.sub(rf'\b{greeting}\b[,.]?\s*', '', remaining_message, flags=re.IGNORECASE)
+                    break
+
+            remaining_message = remaining_message.strip()
+
+            # If there's content after greeting, handle the FULL MESSAGE but with instruction to skip greeting
+            if remaining_message and len(remaining_message) > 2:
+                # Pass the full message but with special instruction to skip greeting
+                enhanced_input = f"[USER HAS GREETED WITH PROBLEM - SKIP GREETING AND DIRECTLY ADDRESS THE ISSUE]\n{user_input}"
+                response = get_ai_response(enhanced_input, image_data, session_state["chat_history"])
+            else:
+                # Just greeting
+                response = get_intro_response()
+
+            session_state["intro_given"] = True
+            show_feedback = True  # Changed to True
+        else:
+            # Only filter if MCP says we should
+            if should_filter and not is_novarsis_related(user_input):
+                return """Sorry, I only help with Novarsis SEO Tool.
 
 Please let me know if you have any SEO tool related questions?"""
 
-        # Get context from MCP
-        context = mcp.get_context_prompt()
+            # Get context from MCP
+            context = mcp.get_context_prompt()
 
-        # Enhanced system prompt based on emotional tone
-        enhanced_prompt = SYSTEM_PROMPT
-        if mcp.conversation_state["emotional_tone"] == "urgent":
-            enhanced_prompt += "\n[User is urgent - provide immediate, actionable solutions]"
-        elif mcp.conversation_state["emotional_tone"] == "frustrated":
-            enhanced_prompt += "\n[User is frustrated - be extra helpful and empathetic]"
+            # Enhanced system prompt based on emotional tone
+            enhanced_prompt = SYSTEM_PROMPT
+            if mcp.conversation_state["emotional_tone"] == "urgent":
+                enhanced_prompt += "\n[User is urgent - provide immediate, actionable solutions]"
+            elif mcp.conversation_state["emotional_tone"] == "frustrated":
+                enhanced_prompt += "\n[User is frustrated - be extra helpful and empathetic]"
 
-        # Create the full prompt with special handling for images
-        if image_data:
-            # Enhanced prompt for image analysis
-            image_analysis_prompt = """\n\nIMPORTANT: The user has attached an image containing SEO-related errors.
-            Please analyze the image and:
-            1. Identify all visible SEO errors or issues shown in the screenshot
-            2. For each error, provide:
-               - The exact error message or issue type
-               - A clear explanation of what this error means
-               - Step-by-step instructions to fix the error using Novarsis SEO Tool
-            3. If multiple errors are visible, address each one separately
-            4. Use simple, non-technical language where possible
-            5. If you cannot identify specific SEO errors in the image, ask the user to describe what error they're experiencing
+            # ADD CRITICAL PLAN CONTEXT INSTRUCTION
+            enhanced_prompt += """\n\n[CRITICAL INSTRUCTION FOR THIS QUERY]
+If user mentions ONLY ONE plan name (free/pro/enterprise), respond about ONLY that plan.
+DO NOT list all three plans unless user asks to 'compare' or 'show all'.
+This is MANDATORY - violating this will provide wrong information to user."""
 
-            Common SEO errors to look for in screenshots:
-            - Meta tag issues (missing, too long, too short)
-            - Heading structure problems (missing H1, multiple H1s)
-            - Missing alt text on images
-            - Page speed scores and issues
-            - Mobile usability errors
-            - 404 errors and broken links
-            - SSL/HTTPS warnings
-            - Schema markup errors
-            - Core Web Vitals metrics
-            - Duplicate content warnings
+            # Create the full prompt with special handling for images
+            if image_data:
+                # Enhanced prompt for image analysis
+                image_analysis_prompt = """\n\nIMPORTANT: The user has attached an image containing SEO-related errors.
+                Please analyze the image and:
+                1. Identify all visible SEO errors or issues shown in the screenshot
+                2. For each error, provide:
+                   - The exact error message or issue type
+                   - A clear explanation of what this error means
+                   - Step-by-step instructions to fix the error using Novarsis SEO Tool
+                3. If multiple errors are visible, address each one separately
+                4. Use simple, non-technical language where possible
+                5. If you cannot identify specific SEO errors in the image, ask the user to describe what error they're experiencing
 
-            Format your response clearly with the error type as a header, followed by explanation and solution."""
+                Common SEO errors to look for in screenshots:
+                - Meta tag issues (missing, too long, too short)
+                - Heading structure problems (missing H1, multiple H1s)
+                - Missing alt text on images
+                - Page speed scores and issues
+                - Mobile usability errors
+                - 404 errors and broken links
+                - SSL/HTTPS warnings
+                - Schema markup errors
+                - Core Web Vitals metrics
+                - Duplicate content warnings
 
-            # For Groq, use simpler prompt without full system prompt (already in API call)
-            prompt = f"{context}\n\nUser query with SEO error screenshot: {user_input}\n\nAnalyze the attached image for SEO-related errors and provide solutions using Novarsis SEO Tool."
-        else:
-            # For Groq, use simpler prompt
-            prompt = f"User query: {user_input}"
+                Format your response clearly with the error type as a header, followed by explanation and solution."""
 
-        # Call Groq API
-        response_text = call_groq_api(prompt, image_data)
+                # For Groq, use simpler prompt without full system prompt (already in API call)
+                prompt = f"{context}\n\nUser query with SEO error screenshot: {user_input}\n\nAnalyze the attached image for SEO-related errors and provide solutions using Novarsis SEO Tool."
+            else:
+                # For Groq, use simpler prompt
+                prompt = f"User query: {user_input}"
 
-        # Check if API returned an error
-        if "Error:" in response_text or "cannot connect" in response_text.lower():
-            logger.error(f"API Error in response: {response_text}")
-            # Return a more helpful message instead of the raw error
-            return "I'm having trouble connecting to the AI service right now. Please try again in a moment, or contact support@novarsistech.com for assistance."
+            # PREPARE CONVERSATION HISTORY for context-aware responses
+            conversation_history = []
+            if mcp and hasattr(mcp, 'context_window') and mcp.context_window:
+                # Convert MCP context to API format
+                for entry in mcp.context_window:
+                    if entry.get('role') in ['user', 'assistant']:
+                        conversation_history.append({
+                            'role': entry.get('role'),
+                            'content': entry.get('content', '')
+                        })
 
-        # Debug: Print the response before processing
-        logger.info(f"Response received, length: {len(response_text)}")
+            # Call Groq API with conversation history
+            response_text = call_groq_api(prompt, image_data, conversation_history)
 
-        # ULTRA EARLY PRICING FIX - If this is a pricing query, replace the ENTIRE response
-        if ('pricing' in user_input.lower() or 'plans' in user_input.lower() or
-                'price' in user_input.lower() or 'cost' in user_input.lower()):
-            # This is a pricing query - return the correct format immediately
-            return """Free Plan
-• 5 websites
-• All SEO tools
-• 0/month
+            # Check if API returned an error
+            if "Error:" in response_text or "cannot connect" in response_text.lower():
+                logger.error(f"API Error in response: {response_text}")
+                # Return a more helpful message instead of the raw error
+                return "I'm having trouble connecting to the AI service right now. Please try again in a moment, or contact support@novarsistech.com for assistance."
 
-Pro Plan
-• 50 websites
-• Priority support
-• 49/month
+            # Debug: Print the response before processing
+            logger.info(f"Response received, length: {len(response_text)}")
 
-Enterprise
-• Unlimited sites
-• Dedicated manager
-• Custom pricing
+            # ULTRA EARLY FIX: Fix domain spacing issues immediately after getting response
+            # This pattern catches "domain. Com" or "domain . Com" etc.
+            response_text = re.sub(r'([a-zA-Z0-9-]+)\s*\.\s+([Cc][Oo][Mm])\b', r'\1.com', response_text)
+            response_text = re.sub(r'([a-zA-Z0-9-]+)\s*\.\s+([Nn][Ee][Tt])\b', r'\1.net', response_text)
+            response_text = re.sub(r'([a-zA-Z0-9-]+)\s*\.\s+([Oo][Rr][Gg])\b', r'\1.org', response_text)
+            response_text = re.sub(r'([a-zA-Z0-9-]+)\s*\.\s+([Cc][Oo])\b', r'\1.co', response_text)
+            response_text = re.sub(r'([a-zA-Z0-9-]+)\s*\.\s+([Ii][Oo])\b', r'\1.io', response_text)
+            response_text = re.sub(r'([a-zA-Z0-9-]+)\s*\.\s+([Ii][Nn])\b', r'\1.in', response_text)
 
-Have I resolved your query?"""
+            # Fix capitalized extensions
+            response_text = response_text.replace('. Com', '.com')
+            response_text = response_text.replace('.Com', '.com')
+            response_text = response_text.replace('. NET', '.net')
+            response_text = response_text.replace('.NET', '.net')
+            response_text = response_text.replace('. ORG', '.org')
+            response_text = response_text.replace('.ORG', '.org')
 
-        # ULTRA EARLY FIX: Fix domain spacing issues immediately after getting response
-        # This pattern catches "domain. Com" or "domain . Com" etc.
-        response_text = re.sub(r'([a-zA-Z0-9-]+)\s*\.\s+([Cc][Oo][Mm])\b', r'\1.com', response_text)
-        response_text = re.sub(r'([a-zA-Z0-9-]+)\s*\.\s+([Nn][Ee][Tt])\b', r'\1.net', response_text)
-        response_text = re.sub(r'([a-zA-Z0-9-]+)\s*\.\s+([Oo][Rr][Gg])\b', r'\1.org', response_text)
-        response_text = re.sub(r'([a-zA-Z0-9-]+)\s*\.\s+([Cc][Oo])\b', r'\1.co', response_text)
-        response_text = re.sub(r'([a-zA-Z0-9-]+)\s*\.\s+([Ii][Oo])\b', r'\1.io', response_text)
-        response_text = re.sub(r'([a-zA-Z0-9-]+)\s*\.\s+([Ii][Nn])\b', r'\1.in', response_text)
+            # Specific fix for the exact pattern you're seeing
+            response_text = response_text.replace('example. Com', 'example.com')
+            response_text = response_text.replace('example. com', 'example.com')
+            response_text = response_text.replace('example .com', 'example.com')
+            response_text = response_text.replace('example . com', 'example.com')
 
-        # Fix capitalized extensions
-        response_text = response_text.replace('. Com', '.com')
-        response_text = response_text.replace('.Com', '.com')
-        response_text = response_text.replace('. NET', '.net')
-        response_text = response_text.replace('.NET', '.net')
-        response_text = response_text.replace('. ORG', '.org')
-        response_text = response_text.replace('.ORG', '.org')
+            # CRITICAL: Fix ALL domain names and URLs (not just emails)
+            # Extract any URLs/domains from user input
+            url_pattern = r'(?:https?://)?(?:www\.)?([a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,})'
+            url_matches = re.findall(url_pattern, user_input, re.IGNORECASE)
 
-        # Specific fix for the exact pattern you're seeing
-        response_text = response_text.replace('example. Com', 'example.com')
-        response_text = response_text.replace('example. com', 'example.com')
-        response_text = response_text.replace('example .com', 'example.com')
-        response_text = response_text.replace('example . com', 'example.com')
+            # Also look for simple domain patterns
+            simple_domain_pattern = r'\b([a-zA-Z0-9-]+\.[a-zA-Z]{2,})\b'
+            simple_matches = re.findall(simple_domain_pattern, user_input, re.IGNORECASE)
+            url_matches.extend(simple_matches)
 
-        # CRITICAL: Fix ALL domain names and URLs (not just emails)
-        # Extract any URLs/domains from user input
-        url_pattern = r'(?:https?://)?(?:www\.)?([a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,})'
-        url_matches = re.findall(url_pattern, user_input, re.IGNORECASE)
+            # Fix each found domain in the response
+            for domain in url_matches:
+                # Clean the domain (lowercase, no spaces)
+                clean_domain = domain.lower().strip()
 
-        # Also look for simple domain patterns
-        simple_domain_pattern = r'\b([a-zA-Z0-9-]+\.[a-zA-Z]{2,})\b'
-        simple_matches = re.findall(simple_domain_pattern, user_input, re.IGNORECASE)
-        url_matches.extend(simple_matches)
+                # Create all possible corrupted variations
+                domain_parts = clean_domain.split('.')
+                if len(domain_parts) >= 2:
+                    domain_name = '.'.join(domain_parts[:-1])  # Everything except TLD
+                    tld = domain_parts[-1]  # The TLD (com, net, org, etc.)
 
-        # Fix each found domain in the response
-        for domain in url_matches:
-            # Clean the domain (lowercase, no spaces)
-            clean_domain = domain.lower().strip()
+                    # Fix variations with space and capitalization
+                    corrupted_domain_patterns = [
+                        # Domain with space before dot: "domain . com" or "domain .com"
+                        rf'{re.escape(domain_name)}\s+\.\s*{re.escape(tld)}',
+                        rf'{re.escape(domain_name)}\s*\.\s+{re.escape(tld)}',
+                        # Domain with capital TLD: "domain.Com"
+                        rf'{re.escape(domain_name)}\.{re.escape(tld.capitalize())}',
+                        # Domain with space and capital: "domain. Com" or "domain . Com"
+                        rf'{re.escape(domain_name)}\s*\.\s*{re.escape(tld.capitalize())}',
+                        # Any weird capitalization of the TLD
+                        rf'{re.escape(domain_name)}\s*\.\s*{re.escape(tld.upper())}',
+                        # Handle if domain name itself got capitalized
+                        rf'{re.escape(domain_name.capitalize())}\s*\.\s*{re.escape(tld)}',
+                        rf'{re.escape(domain_name.capitalize())}\s*\.\s*{re.escape(tld.capitalize())}',
+                    ]
 
-            # Create all possible corrupted variations
-            domain_parts = clean_domain.split('.')
-            if len(domain_parts) >= 2:
-                domain_name = '.'.join(domain_parts[:-1])  # Everything except TLD
-                tld = domain_parts[-1]  # The TLD (com, net, org, etc.)
+                    for pattern in corrupted_domain_patterns:
+                        response_text = re.sub(pattern, clean_domain, response_text, flags=re.IGNORECASE)
 
-                # Fix variations with space and capitalization
-                corrupted_domain_patterns = [
-                    # Domain with space before dot: "domain . com" or "domain .com"
-                    rf'{re.escape(domain_name)}\s+\.\s*{re.escape(tld)}',
-                    rf'{re.escape(domain_name)}\s*\.\s+{re.escape(tld)}',
-                    # Domain with capital TLD: "domain.Com"
-                    rf'{re.escape(domain_name)}\.{re.escape(tld.capitalize())}',
-                    # Domain with space and capital: "domain. Com" or "domain . Com"
-                    rf'{re.escape(domain_name)}\s*\.\s*{re.escape(tld.capitalize())}',
-                    # Any weird capitalization of the TLD
-                    rf'{re.escape(domain_name)}\s*\.\s*{re.escape(tld.upper())}',
-                    # Handle if domain name itself got capitalized
-                    rf'{re.escape(domain_name.capitalize())}\s*\.\s*{re.escape(tld)}',
-                    rf'{re.escape(domain_name.capitalize())}\s*\.\s*{re.escape(tld.capitalize())}',
+            # Fix common domain extensions with spaces/capitals for ANY domain
+            # This catches domains not in user input too
+            response_text = re.sub(r'([a-zA-Z0-9-]+)\s+\.\s*([Cc][Oo][Mm])\b', r'\1.com', response_text)
+            response_text = re.sub(r'([a-zA-Z0-9-]+)\s+\.\s*([Nn][Ee][Tt])\b', r'\1.net', response_text)
+            response_text = re.sub(r'([a-zA-Z0-9-]+)\s+\.\s*([Oo][Rr][Gg])\b', r'\1.org', response_text)
+            response_text = re.sub(r'([a-zA-Z0-9-]+)\s+\.\s*([Ii][Oo])\b', r'\1.io', response_text)
+            response_text = re.sub(r'([a-zA-Z0-9-]+)\s+\.\s*([Cc][Oo])\b', r'\1.co', response_text)
+
+            # Fix domains ending with ". Com" (space + capital)
+            response_text = re.sub(r'([a-zA-Z0-9-]+)\s*\.\s*Com\b', r'\1.com', response_text)
+            response_text = re.sub(r'([a-zA-Z0-9-]+)\.Com\b', r'\1.com', response_text)
+
+            # Additional comprehensive domain fixes
+            # Fix any domain pattern with space before TLD
+            response_text = re.sub(r'([a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*)\s+\.\s*([a-zA-Z]{2,})\b', r'\1.\2', response_text)
+            # Fix capitalized TLDs
+            response_text = re.sub(r'\.([A-Z]{2,})\b', lambda m: '.' + m.group(1).lower(), response_text)
+            # Fix space after dot in domains
+            response_text = re.sub(r'([a-zA-Z0-9-]+)\.\s+([a-zA-Z]{2,})\b', r'\1.\2', response_text)
+
+            # CRITICAL EMAIL FIX: Extract and preserve user's email from input FIRST
+            user_email = None
+            user_email_match = re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', user_input)
+            if user_email_match:
+                user_email = user_email_match.group()
+                logger.info(f"User provided email: {user_email}")
+
+                # Find ANY mention of an email in response that looks like it could be the user's email
+                # This includes truncated or corrupted versions
+                domain = user_email.split('@')[1]  # e.g., "gmail.com"
+                username = user_email.split('@')[0]  # e.g., "ehdhk"
+
+                # Create patterns to match corrupted versions of the user's email
+                corruption_patterns = [
+                    # Truncated username: "k@gmail.com" instead of "ehdhk@gmail.com"
+                    rf'\b[a-z]{{1,3}}@{re.escape(domain)}',
+                    # Space in domain: "ehdhk@gmail. com" or "k@gmail. Com"
+                    rf'[a-zA-Z0-9._%+-]*@{domain.split(".")[0]}\s*\.\s*{domain.split(".")[1]}',
+                    # Partial username with space in domain
+                    rf'{username[-3:] if len(username) > 3 else username}@{domain.split(".")[0]}\s*\.\s*[Cc]om',
+                    # Just the last letter(s): "k@gmail.Com" or "hk@gmail.com"
+                    rf'{username[-1]}@{re.escape(domain)}',
+                    rf'{username[-2:] if len(username) > 2 else username}@{re.escape(domain)}',
+                    # Any short variation with the domain
+                    rf'\b\w{{1,5}}@{re.escape(domain)}',
+                    # The word "email" followed by truncated version
+                    rf'email\s+\w{{1,5}}@{re.escape(domain)}',
+                    # Any mention of partial username@domain
+                    rf'\b\w*{username[-1]}@{re.escape(domain)}',
                 ]
 
-                for pattern in corrupted_domain_patterns:
-                    response_text = re.sub(pattern, clean_domain, response_text, flags=re.IGNORECASE)
+                # Replace ALL corrupted versions with the correct email
+                for pattern in corruption_patterns:
+                    matches = list(re.finditer(pattern, response_text, re.IGNORECASE))
+                    for match in matches:
+                        # Check if this isn't the support email
+                        if 'support' not in match.group().lower() and 'novarsis' not in match.group().lower():
+                            logger.info(f"Replacing corrupted email: {match.group()} with {user_email}")
+                            response_text = response_text[:match.start()] + user_email + response_text[match.end():]
 
-        # Fix common domain extensions with spaces/capitals for ANY domain
-        # This catches domains not in user input too
-        response_text = re.sub(r'([a-zA-Z0-9-]+)\s+\.\s*([Cc][Oo][Mm])\b', r'\1.com', response_text)
-        response_text = re.sub(r'([a-zA-Z0-9-]+)\s+\.\s*([Nn][Ee][Tt])\b', r'\1.net', response_text)
-        response_text = re.sub(r'([a-zA-Z0-9-]+)\s+\.\s*([Oo][Rr][Gg])\b', r'\1.org', response_text)
-        response_text = re.sub(r'([a-zA-Z0-9-]+)\s+\.\s*([Ii][Oo])\b', r'\1.io', response_text)
-        response_text = re.sub(r'([a-zA-Z0-9-]+)\s+\.\s*([Cc][Oo])\b', r'\1.co', response_text)
+                # ADDITIONAL FIX: Look for the exact user email with space/capitalization issues
+                # This catches cases where the full email is present but formatted wrong
+                # e.g., "ejdneajd@gmail. Com" -> "ejdneajd@gmail.com"
+                corrupted_exact_patterns = [
+                    # Username with space after dot: "ejdneajd@gmail. com"
+                    rf'{re.escape(username)}@{domain.split(".")[0]}\s*\.\s*{domain.split(".")[1]}',
+                    # Username with capital Com: "ejdneajd@gmail.Com"
+                    rf'{re.escape(username)}@{domain.split(".")[0]}\.{domain.split(".")[1].capitalize()}',
+                    # Username with space and capital: "ejdneajd@gmail. Com"
+                    rf'{re.escape(username)}@{domain.split(".")[0]}\s*\.\s*{domain.split(".")[1].capitalize()}',
+                    # Any capitalization variation
+                    rf'{re.escape(username)}@{domain.split(".")[0]}\s*\.\s*[Cc][Oo][Mm]',
+                ]
 
-        # Fix domains ending with ". Com" (space + capital)
-        response_text = re.sub(r'([a-zA-Z0-9-]+)\s*\.\s*Com\b', r'\1.com', response_text)
-        response_text = re.sub(r'([a-zA-Z0-9-]+)\.Com\b', r'\1.com', response_text)
+                for pattern in corrupted_exact_patterns:
+                    if re.search(pattern, response_text, re.IGNORECASE):
+                        logger.info(f"Fixing exact email corruption: {pattern}")
+                        response_text = re.sub(pattern, user_email, response_text, flags=re.IGNORECASE)
 
-        # Additional comprehensive domain fixes
-        # Fix any domain pattern with space before TLD
-        response_text = re.sub(r'([a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*)\s+\.\s*([a-zA-Z]{2,})\b', r'\1.\2', response_text)
-        # Fix capitalized TLDs
-        response_text = re.sub(r'\.([A-Z]{2,})\b', lambda m: '.' + m.group(1).lower(), response_text)
-        # Fix space after dot in domains
-        response_text = re.sub(r'([a-zA-Z0-9-]+)\.\s+([a-zA-Z]{2,})\b', r'\1.\2', response_text)
+            # COMPREHENSIVE EMAIL FIXES for ALL emails (not just user's)
+            # Fix patterns like "email. com" or "email. Com"
+            response_text = re.sub(
+                r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+)\s+\.\s*([Cc][Oo][Mm]|[Cc]om|[Cc]o\.in|[Nn]et|[Oo]rg|[Ii]n|[Ii]o)',
+                r'\1.com', response_text)
 
-        # CRITICAL EMAIL FIX: Extract and preserve user's email from input FIRST
-        user_email = None
-        user_email_match = re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', user_input)
-        if user_email_match:
-            user_email = user_email_match.group()
-            logger.info(f"User provided email: {user_email}")
+            # Fix any email ending with ". Com" (space + capital C)
+            response_text = re.sub(r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+)\s*\.\s*Com\b', r'\1.com', response_text)
 
-            # Find ANY mention of an email in response that looks like it could be the user's email
-            # This includes truncated or corrupted versions
-            domain = user_email.split('@')[1]  # e.g., "gmail.com"
-            username = user_email.split('@')[0]  # e.g., "ehdhk"
+            # Fix any email ending with ".Com" (no space, capital C)
+            response_text = re.sub(r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+)\.Com\b', r'\1.com', response_text)
 
-            # Create patterns to match corrupted versions of the user's email
-            corruption_patterns = [
-                # Truncated username: "k@gmail.com" instead of "ehdhk@gmail.com"
-                rf'\b[a-z]{{1,3}}@{re.escape(domain)}',
-                # Space in domain: "ehdhk@gmail. com" or "k@gmail. Com"
-                rf'[a-zA-Z0-9._%+-]*@{domain.split(".")[0]}\s*\.\s*{domain.split(".")[1]}',
-                # Partial username with space in domain
-                rf'{username[-3:] if len(username) > 3 else username}@{domain.split(".")[0]}\s*\.\s*[Cc]om',
-                # Just the last letter(s): "k@gmail.Com" or "hk@gmail.com"
-                rf'{username[-1]}@{re.escape(domain)}',
-                rf'{username[-2:] if len(username) > 2 else username}@{re.escape(domain)}',
-                # Any short variation with the domain
-                rf'\b\w{{1,5}}@{re.escape(domain)}',
-                # The word "email" followed by truncated version
-                rf'email\s+\w{{1,5}}@{re.escape(domain)}',
-                # Any mention of partial username@domain
-                rf'\b\w*{username[-1]}@{re.escape(domain)}',
-            ]
+            # Fix user emails that got corrupted (e.g., "gbgbnd@gmail. Com" -> "gbgbnd@gmail.com")
+            response_text = re.sub(r'@([a-zA-Z0-9.-]+)\s+\.\s*([Cc][Oo][Mm]|[Cc]om|[Nn]et|[Oo]rg|[Ii]n|[Ii]o)', r'@\1.\2',
+                                   response_text)
 
-            # Replace ALL corrupted versions with the correct email
-            for pattern in corruption_patterns:
-                matches = list(re.finditer(pattern, response_text, re.IGNORECASE))
-                for match in matches:
-                    # Check if this isn't the support email
-                    if 'support' not in match.group().lower() and 'novarsis' not in match.group().lower():
-                        logger.info(f"Replacing corrupted email: {match.group()} with {user_email}")
-                        response_text = response_text[:match.start()] + user_email + response_text[match.end():]
+            # If user_email exists, do a final pass to ensure it's correctly formatted everywhere
+            if user_email:
+                # Make sure user's email is properly formatted (fix any remaining issues)
+                response_text = response_text.replace(user_email.replace('.com', '.Com'), user_email)
+                response_text = response_text.replace(user_email.replace('.com', '. com'), user_email)
+                response_text = response_text.replace(user_email.replace('.com', '. Com'), user_email)
 
-            # ADDITIONAL FIX: Look for the exact user email with space/capitalization issues
-            # This catches cases where the full email is present but formatted wrong
-            # e.g., "ejdneajd@gmail. Com" -> "ejdneajd@gmail.com"
-            corrupted_exact_patterns = [
-                # Username with space after dot: "ejdneajd@gmail. com"
-                rf'{re.escape(username)}@{domain.split(".")[0]}\s*\.\s*{domain.split(".")[1]}',
-                # Username with capital Com: "ejdneajd@gmail.Com"
-                rf'{re.escape(username)}@{domain.split(".")[0]}\.{domain.split(".")[1].capitalize()}',
-                # Username with space and capital: "ejdneajd@gmail. Com"
-                rf'{re.escape(username)}@{domain.split(".")[0]}\s*\.\s*{domain.split(".")[1].capitalize()}',
-                # Any capitalization variation
-                rf'{re.escape(username)}@{domain.split(".")[0]}\s*\.\s*[Cc][Oo][Mm]',
-            ]
-
-            for pattern in corrupted_exact_patterns:
-                if re.search(pattern, response_text, re.IGNORECASE):
-                    logger.info(f"Fixing exact email corruption: {pattern}")
-                    response_text = re.sub(pattern, user_email, response_text, flags=re.IGNORECASE)
-
-        # COMPREHENSIVE EMAIL FIXES for ALL emails (not just user's)
-        # Fix patterns like "email. com" or "email. Com"
-        response_text = re.sub(
-            r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+)\s+\.\s*([Cc][Oo][Mm]|[Cc]om|[Cc]o\.in|[Nn]et|[Oo]rg|[Ii]n|[Ii]o)',
-            r'\1.com', response_text)
-
-        # Fix any email ending with ". Com" (space + capital C)
-        response_text = re.sub(r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+)\s*\.\s*Com\b', r'\1.com', response_text)
-
-        # Fix any email ending with ".Com" (no space, capital C)
-        response_text = re.sub(r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+)\.Com\b', r'\1.com', response_text)
-
-        # Fix user emails that got corrupted (e.g., "gbgbnd@gmail. Com" -> "gbgbnd@gmail.com")
-        response_text = re.sub(r'@([a-zA-Z0-9.-]+)\s+\.\s*([Cc][Oo][Mm]|[Cc]om|[Nn]et|[Oo]rg|[Ii]n|[Ii]o)', r'@\1.\2',
-                               response_text)
-
-        # If user_email exists, do a final pass to ensure it's correctly formatted everywhere
-        if user_email:
-            # Make sure user's email is properly formatted (fix any remaining issues)
-            response_text = response_text.replace(user_email.replace('.com', '.Com'), user_email)
-            response_text = response_text.replace(user_email.replace('.com', '. com'), user_email)
-            response_text = response_text.replace(user_email.replace('.com', '. Com'), user_email)
-
-        # Fix alphanumeric spacing (but protect emails)
-        # Protect email addresses first - improved pattern to catch more variations
-        protected_emails = []
-        email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
-        for match in re.finditer(email_pattern, response_text):
-            placeholder = f'__EMAIL_{len(protected_emails)}__'
-            protected_emails.append(match.group())
-            response_text = response_text.replace(match.group(), placeholder)
-
-        # Also protect any remaining email-like patterns that might have been missed
-        # This catches patterns like "email@domain.com" or "user@domain. com"
-        extended_email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\s*\.\s*[a-zA-Z]{2,}'
-        for match in re.finditer(extended_email_pattern, response_text):
-            if f'__EMAIL_{len(protected_emails)}__' not in response_text:  # Avoid duplicates
+            # Fix alphanumeric spacing (but protect emails)
+            # Protect email addresses first - improved pattern to catch more variations
+            protected_emails = []
+            email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+            for match in re.finditer(email_pattern, response_text):
                 placeholder = f'__EMAIL_{len(protected_emails)}__'
-                protected_emails.append(match.group().replace(' ', ''))  # Clean the email
+                protected_emails.append(match.group())
                 response_text = response_text.replace(match.group(), placeholder)
 
-        # Now add spaces between numbers and letters
-        response_text = re.sub(r'(\d+)([a-zA-Z])', r'\1 \2', response_text)
-        response_text = re.sub(r'([a-zA-Z])(\d+)', r'\1 \2', response_text)
+            # Also protect any remaining email-like patterns that might have been missed
+            # This catches patterns like "email@domain.com" or "user@domain. com"
+            extended_email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\s*\.\s*[a-zA-Z]{2,}'
+            for match in re.finditer(extended_email_pattern, response_text):
+                if f'__EMAIL_{len(protected_emails)}__' not in response_text:  # Avoid duplicates
+                    placeholder = f'__EMAIL_{len(protected_emails)}__'
+                    protected_emails.append(match.group().replace(' ', ''))  # Clean the email
+                    response_text = response_text.replace(match.group(), placeholder)
 
-        # Restore protected emails
-        for i, email in enumerate(protected_emails):
-            response_text = response_text.replace(f'__EMAIL_{i}__', email)
+            # Now add spaces between numbers and letters
+            response_text = re.sub(r'(\d+)([a-zA-Z])', r'\1 \2', response_text)
+            response_text = re.sub(r'([a-zA-Z])(\d+)', r'\1 \2', response_text)
 
-        # NOW fix email formatting after alphanumeric spacing
-        response_text = fix_email_format(response_text)
+            # Restore protected emails
+            for i, email in enumerate(protected_emails):
+                response_text = response_text.replace(f'__EMAIL_{i}__', email)
 
-        # Enhanced cleaning for grammar and formatting
-        # Remove ALL asterisk symbols (both ** and single *)
-        response_text = re.sub(r'\*+', '', response_text)  # Remove all asterisks
-        response_text = response_text.replace("**", "")  # Extra safety for double asterisks
-        # Remove any repetitive intro lines if present
-        response_text = re.sub(r'^(Hey there[!,. ]*I\'?m Nova.*?assistant[.!]?\s*)', '', response_text,
-                               flags=re.IGNORECASE).strip()
-        # Keep alphanumeric, spaces, common punctuation, newlines, and bullet/section characters
-        response_text = re.sub(r'[^a-zA-Z0-9 .,!?:;()\n•@-]', '', response_text)
+            # NOW fix email formatting after alphanumeric spacing
+            response_text = fix_email_format(response_text)
 
-        # Fix common grammar issues
-        # Ensure space after period if not followed by a newline
-        response_text = re.sub(r'\.([A-Za-z])', r'. \1', response_text)
-        # Fix double spaces
-        response_text = re.sub(r'\s+', ' ', response_text)
-        # Ensure space after comma
-        response_text = re.sub(r',([A-Za-z])', r', \1', response_text)
-        # Ensure space after question mark and exclamation
-        response_text = re.sub(r'([!?])([A-Za-z])', r'\1 \2', response_text)
-        # Fix missing spaces between words
-        response_text = re.sub(r'([a-z])([A-Z])', r'\1 \2', response_text)
+            # Enhanced cleaning for grammar and formatting
+            # Remove ALL asterisk symbols (both ** and single *)
+            response_text = re.sub(r'\*+', '', response_text)  # Remove all asterisks
+            response_text = response_text.replace("**", "")  # Extra safety for double asterisks
+            # Remove any repetitive intro lines if present
+            response_text = re.sub(r'^(Hey there[!,. ]*I\'?m Nova.*?assistant[.!]?\s*)', '', response_text,
+                                   flags=re.IGNORECASE).strip()
+            # Keep alphanumeric, spaces, common punctuation, newlines, and bullet/section characters
+            response_text = re.sub(r'[^a-zA-Z0-9 .,!?:;()\n•@-]', '', response_text)
 
-        # --- Formatting improvements for presentability ---
-        # Normalize multiple spaces
-        response_text = re.sub(r'\s+', ' ', response_text)
-        # Ensure proper paragraph separation
-        response_text = re.sub(r'([.!?])\s', r'\1\n\n', response_text)
+            # Fix common grammar issues
+            # Ensure space after period if not followed by a newline
+            response_text = re.sub(r'\.([A-Za-z])', r'. \1', response_text)
+            # Fix double spaces
+            response_text = re.sub(r'\s+', ' ', response_text)
+            # Ensure space after comma
+            response_text = re.sub(r',([A-Za-z])', r', \1', response_text)
+            # Ensure space after question mark and exclamation
+            response_text = re.sub(r'([!?])([A-Za-z])', r'\1 \2', response_text)
+            # Fix missing spaces between words
+            response_text = re.sub(r'([a-z])([A-Z])', r'\1 \2', response_text)
 
-        # CRITICAL PRICING FIX - Complete replacement for any pricing response
-        # This should happen EARLY in the processing pipeline
-        if ('pricing' in response_text.lower() or 'plans' in response_text.lower() or
-                'free plan' in response_text.lower() or 'pro plan' in response_text.lower()):
+            # --- Formatting improvements for presentability ---
+            # Normalize multiple spaces
+            response_text = re.sub(r'\s+', ' ', response_text)
+            # Ensure proper paragraph separation
+            response_text = re.sub(r'([.!?])\s', r'\1\n\n', response_text)
 
-            # If we detect ANY pricing-related content, replace EVERYTHING with the correct format
-            if any(x in response_text.lower() for x in ['5 websites', '50 websites', 'unlimited sites',
-                                                        'all seo tools', 'priority support', 'dedicated manager',
-                                                        '0/month', '49/month', 'custom pricing']):
-                # This is definitely a pricing response - replace it completely
-                response_text = """Free Plan
-• 5 websites
-• All SEO tools
-• 0/month
+            # Format the response text to ensure proper bullet points and numbered lists
+            response_text = format_response_text(response_text)
 
-Pro Plan
-• 50 websites
-• Priority support
-• 49/month
+            # --- End formatting improvements ---
 
-Enterprise
-• Unlimited sites
-• Dedicated manager
-• Custom pricing
+            # Clean the response (format pricing, remove duplicate questions, fix ticket numbers)
+            response_text = clean_response(response_text)
 
-Have I resolved your query?"""
+            # SPECIAL PRICING FORMAT FIX
+            # Fix the specific pattern you're seeing
+            if any(plan in response_text for plan in ['Free Plan', 'Pro Plan', 'Enterprise']):
+                # More comprehensive pattern to handle inline pricing plans
+                # Pattern 1: "Free Plan 5 websites All SEO tools 0/month" (no bullets)
+                response_text = re.sub(r'Free Plan\s+5\s+websites\s+All\s+SEO\s+tools\s+0/month',
+                                       r'\n\nFree Plan\n 5 websites\n• All SEO tools\n• 0/month', response_text)
+                response_text = re.sub(r'Pro Plan\s+50\s+websites\s+Priority\s+support\s+49/month',
+                                       r'\n\nPro Plan\n50 websites\n• Priority support\n• 49/month', response_text)
+                response_text = re.sub(r'Enterprise\s+Unlimited\s+sites\s+Dedicated\s+manager\s+Custom\s+pricing',
+                                       r'\n\nEnterprise\n• Unlimited sites\n• Dedicated manager\n• Custom pricing',
+                                       response_text)
 
-                # Skip all other formatting - return immediately
-                return response_text.strip()
+                # Pattern 2: Fix patterns like "Free Plan • 5 websites • All SEO tools • 0 month"
+                response_text = re.sub(r'\*\*Free Plan\*\*', 'Free Plan', response_text)  # Remove asterisks
+                response_text = re.sub(r'\*\*Pro Plan\*\*', 'Pro Plan', response_text)
+                response_text = re.sub(r'\*\*Enterprise\*\*', 'Enterprise', response_text)
+                response_text = re.sub(r'Free Plan\s*•\s*([^\n•]+)', r'\n\nFree Plan\n 5 websites', response_text)
+                response_text = re.sub(r'Pro Plan\s*•\s*([^\n•]+)', r'\n\nPro Plan\n50 websites', response_text)
+                response_text = re.sub(r'Enterprise\s*•\s*([^\n•]+)', r'\n\nEnterprise\n• Unlimited sites', response_text)
 
-        # Format the response text to ensure proper bullet points and numbered lists
-        response_text = format_response_text(response_text)
+                # Fix merged bullet points - more comprehensive
+                response_text = re.sub(r'•\s*([^\n•]{1,50})\s*•', r'• \1\n•', response_text)
 
-        # --- End formatting improvements ---
+                # Split features that are merged into single line
+                response_text = re.sub(r'( 5\s+websites)\s+([A-Z])', r'\1\n• \2', response_text)
+                response_text = re.sub(r'(50\s+websites)\s+([^\n])', r'\1\n• \2', response_text)
+                response_text = re.sub(r'(•\s+All\s+SEO\s+tools)\s+([^\n])', r'\1\n• \2', response_text)
+                response_text = re.sub(r'(•\s+Priority\s+support)\s+([^\n])', r'\1\n• \2', response_text)
+                response_text = re.sub(r'(•\s+Unlimited\s+sites)\s+([A-Z])', r'\1\n• \2', response_text)
+                response_text = re.sub(r'(•\s+Dedicated\s+manager)\s+([A-Z])', r'\1\n• \2', response_text)
 
-        # Clean the response (format pricing, remove duplicate questions, fix ticket numbers)
-        response_text = clean_response(response_text)
+                # Fix pricing that got merged (like "0 month" should be "0/month")
+                # NOTE: NO DOLLAR SIGNS as per requirement
+                response_text = re.sub(r'(\d+)\s+month\b', r'\1/month', response_text)
+                response_text = re.sub(r'(\d+)\s+year\b', r'\1/year', response_text)
+                # Remove any dollar signs that might have been added
+                response_text = re.sub(r'\$(\d+)/month', r'\1/month', response_text)
+                response_text = re.sub(r'\$(\d+)/year', r'\1/year', response_text)
 
-        # SPECIAL PRICING FORMAT FIX
-        # Fix the specific pattern you're seeing
-        if any(plan in response_text for plan in ['Free Plan', 'Pro Plan', 'Enterprise']):
-            # More comprehensive pattern to handle inline pricing plans
-            # Pattern 1: "Free Plan 5 websites All SEO tools 0/month" (no bullets)
-            response_text = re.sub(r'Free Plan\s+5\s+websites\s+All\s+SEO\s+tools\s+0/month',
-                                   r'\n\nFree Plan\n 5 websites\n• All SEO tools\n• 0/month', response_text)
-            response_text = re.sub(r'Pro Plan\s+50\s+websites\s+Priority\s+support\s+49/month',
-                                   r'\n\nPro Plan\n50 websites\n• Priority support\n• 49/month', response_text)
-            response_text = re.sub(r'Enterprise\s+Unlimited\s+sites\s+Dedicated\s+manager\s+Custom\s+pricing',
-                                   r'\n\nEnterprise\n• Unlimited sites\n• Dedicated manager\n• Custom pricing',
-                                   response_text)
+                # Ensure each bullet point is on new line
+                lines = response_text.split('\n')
+                formatted_lines = []
+                for line in lines:
+                    if '•' in line:
+                        # Split by bullet and format
+                        parts = line.split('•')
+                        if len(parts) > 1:
+                            formatted_lines.append(parts[0].strip())
+                            for part in parts[1:]:
+                                if part.strip():
+                                    formatted_lines.append('• ' + part.strip())
+                    else:
+                        formatted_lines.append(line)
+                response_text = '\n'.join(formatted_lines)
 
-            # Pattern 2: Fix patterns like "Free Plan • 5 websites • All SEO tools • 0 month"
-            response_text = re.sub(r'\*\*Free Plan\*\*', 'Free Plan', response_text)  # Remove asterisks
-            response_text = re.sub(r'\*\*Pro Plan\*\*', 'Pro Plan', response_text)
-            response_text = re.sub(r'\*\*Enterprise\*\*', 'Enterprise', response_text)
-            response_text = re.sub(r'Free Plan\s*•\s*([^\n•]+)', r'\n\nFree Plan\n 5 websites', response_text)
-            response_text = re.sub(r'Pro Plan\s*•\s*([^\n•]+)', r'\n\nPro Plan\n50 websites', response_text)
-            response_text = re.sub(r'Enterprise\s*•\s*([^\n•]+)', r'\n\nEnterprise\n• Unlimited sites', response_text)
+            # Fix common spacing and grammar issues
+            response_text = fix_common_spacing_issues(response_text)
 
-            # Fix merged bullet points - more comprehensive
-            response_text = re.sub(r'•\s*([^\n•]{1,50})\s*•', r'• \1\n•', response_text)
+            # Format numbered lists and bullet points for better presentation
+            response_text = format_response_lists(response_text)
 
-            # Split features that are merged into single line
-            response_text = re.sub(r'( 5\s+websites)\s+([A-Z])', r'\1\n• \2', response_text)
-            response_text = re.sub(r'(50\s+websites)\s+([^\n])', r'\1\n• \2', response_text)
-            response_text = re.sub(r'(•\s+All\s+SEO\s+tools)\s+([^\n])', r'\1\n• \2', response_text)
-            response_text = re.sub(r'(•\s+Priority\s+support)\s+([^\n])', r'\1\n• \2', response_text)
-            response_text = re.sub(r'(•\s+Unlimited\s+sites)\s+([A-Z])', r'\1\n• \2', response_text)
-            response_text = re.sub(r'(•\s+Dedicated\s+manager)\s+([A-Z])', r'\1\n• \2', response_text)
+            # CRITICAL FIX: Ensure Enterprise starts on new line
+            response_text = re.sub(r'(49/month|Priority support|50 websites)\s+Enterprise', r'\1\n\nEnterprise', response_text, flags=re.IGNORECASE)
+            response_text = re.sub(r'(0/month|All SEO tools|5 websites)\s+Pro Plan', r'\1\n\nPro Plan', response_text, flags=re.IGNORECASE)
 
-            # Fix pricing that got merged (like "0 month" should be "0/month")
-            # NOTE: NO DOLLAR SIGNS as per requirement
-            response_text = re.sub(r'(\d+)\s+month\b', r'\1/month', response_text)
-            response_text = re.sub(r'(\d+)\s+year\b', r'\1/year', response_text)
-            # Remove any dollar signs that might have been added
-            response_text = re.sub(r'\$(\d+)/month', r'\1/month', response_text)
-            response_text = re.sub(r'\$(\d+)/year', r'\1/year', response_text)
+            # Fix ANY text followed immediately by plan names
+            response_text = re.sub(r'([a-z])\s+(Enterprise)(?!\s+Enterprise)', r'\1\n\n\2', response_text)
+            response_text = re.sub(r'([a-z])\s+(Pro Plan)(?!\s+Pro)', r'\1\n\n\2', response_text)
+            response_text = re.sub(r'([a-z])\s+(Free Plan)(?!\s+Free)', r'\1\n\n\2', response_text)
 
-            # Ensure each bullet point is on new line
-            lines = response_text.split('\n')
-            formatted_lines = []
-            for line in lines:
-                if '•' in line:
-                    # Split by bullet and format
-                    parts = line.split('•')
-                    if len(parts) > 1:
-                        formatted_lines.append(parts[0].strip())
-                        for part in parts[1:]:
-                            if part.strip():
-                                formatted_lines.append('• ' + part.strip())
-                else:
-                    formatted_lines.append(line)
-            response_text = '\n'.join(formatted_lines)
+            # Fix double repetition of plan names
+            response_text = re.sub(r'Enterprise\s+Enterprise', 'Enterprise', response_text, flags=re.IGNORECASE)
+            response_text = re.sub(r'(Pro Plan)\s+\1', r'\1', response_text, flags=re.IGNORECASE)
+            response_text = re.sub(r'(Free Plan)\s+\1', r'\1', response_text, flags=re.IGNORECASE)
 
-        # Fix common spacing and grammar issues
-        response_text = fix_common_spacing_issues(response_text)
+            # Fix merged plan names with their features (e.g. "Enterprise Unlimited sites")
+            response_text = re.sub(r'Enterprise\s+Unlimited', 'Enterprise\n• Unlimited', response_text)
+            response_text = re.sub(r'Pro Plan\s+(\d+)\s+websites', r'Pro Plan\n• \1 websites', response_text)
+            response_text = re.sub(r'Free Plan\s+(\d+)\s+websites', r'Free Plan\n• \1 websites', response_text)
 
-        # Format numbered lists and bullet points for better presentation
-        response_text = format_response_lists(response_text)
+            # Make the response more presentable
+            response_text = format_response_presentable(response_text)
 
-        # Make the response more presentable
-        response_text = format_response_presentable(response_text)
+            # Ensure "Have I resolved your query?" is always on a new paragraph
+            if "Have I resolved your query?" in response_text:
+                # Replace any occurrence where it's not after a newline
+                response_text = response_text.replace(" Have I resolved your query?", "\n\nHave I resolved your query?")
+                # Also handle if it's at the start of a line but without enough spacing
+                response_text = response_text.replace("\nHave I resolved your query?", "\n\nHave I resolved your query?")
+                # Clean up any triple newlines that might have been created
+                response_text = re.sub(r'\n{3,}Have I resolved your query\?', '\n\nHave I resolved your query?',
+                                       response_text)
 
-        # Ensure "Have I resolved your query?" is always on a new paragraph
-        if "Have I resolved your query?" in response_text:
-            # Replace any occurrence where it's not after a newline
-            response_text = response_text.replace(" Have I resolved your query?", "\n\nHave I resolved your query?")
-            # Also handle if it's at the start of a line but without enough spacing
-            response_text = response_text.replace("\nHave I resolved your query?", "\n\nHave I resolved your query?")
-            # Clean up any triple newlines that might have been created
-            response_text = re.sub(r'\n{3,}Have I resolved your query\?', '\n\nHave I resolved your query?',
-                                   response_text)
+            # FINAL EMAIL FIX - Run this at the very end to catch any corrupted emails
+            # This is the last line of defense
 
-        # FINAL EMAIL FIX - Run this at the very end to catch any corrupted emails
-        # This is the last line of defense
+            # CRITICAL: Final fix for support@support@ duplication
+            response_text = re.sub(r'support@support@novarsistech\.com', 'support@novarsistech.com', response_text,
+                                   flags=re.IGNORECASE)
+            response_text = re.sub(r'support@support@', 'support@', response_text, flags=re.IGNORECASE)
 
-        # CRITICAL: Final fix for support@support@ duplication
-        response_text = re.sub(r'support@support@novarsistech\.com', 'support@novarsistech.com', response_text,
-                               flags=re.IGNORECASE)
-        response_text = re.sub(r'support@support@', 'support@', response_text, flags=re.IGNORECASE)
+            # Fix standard support email variations
+            response_text = re.sub(
+                r'support(?:@)?\s*novarsis\s*tech\s*\.\s*[Cc]om',
+                'support@novarsistech.com',
+                response_text,
+                flags=re.IGNORECASE
+            )
+            # Also fix variations without 'support'
+            response_text = re.sub(
+                r'(?:contact\s+us\s+(?:on|at)\s+)\s*novarsis\s*tech\s*\.\s*[Cc]om',
+                'support@novarsistech.com',
+                response_text,
+                flags=re.IGNORECASE
+            )
 
-        # Fix standard support email variations
-        response_text = re.sub(
-            r'support(?:@)?\s*novarsis\s*tech\s*\.\s*[Cc]om',
-            'support@novarsistech.com',
-            response_text,
-            flags=re.IGNORECASE
-        )
-        # Also fix variations without 'support'
-        response_text = re.sub(
-            r'(?:contact\s+us\s+(?:on|at)\s+)\s*novarsis\s*tech\s*\.\s*[Cc]om',
-            'support@novarsistech.com',
-            response_text,
-            flags=re.IGNORECASE
-        )
+            # FINAL CLEANUP - Remove "For more information" phrase if it still exists
+            response_text = re.sub(
+                r'For more information[,.]?\s*please contact us on\s*',
+                'Contact Us: ',
+                response_text,
+                flags=re.IGNORECASE
+            )
+            response_text = re.sub(
+                r'For more information[,.]?\s*contact us at\s*',
+                'Contact Us: ',
+                response_text,
+                flags=re.IGNORECASE
+            )
 
-        # FINAL CLEANUP - Remove "For more information" phrase if it still exists
-        response_text = re.sub(
-            r'For more information[,.]?\s*please contact us on\s*',
-            'Contact Us: ',
-            response_text,
-            flags=re.IGNORECASE
-        )
-        response_text = re.sub(
-            r'For more information[,.]?\s*contact us at\s*',
-            'Contact Us: ',
-            response_text,
-            flags=re.IGNORECASE
-        )
+            # REMOVED: FINAL PRICING CHECK - This was forcing all plans to be shown
+            # Now we let the AI respond contextually based on the user's specific query
 
-        # FINAL PRICING CHECK - Ensure all three plans are shown
-        if ('pricing' in response_text.lower() or 'plans' in response_text.lower() or
-                ('free plan' in response_text.lower() and '5 websites' in response_text.lower())):
-            # Count how many plans are mentioned
-            plans_mentioned = []
-            if 'free plan' in response_text.lower():
-                plans_mentioned.append('free')
-            if 'pro plan' in response_text.lower():
-                plans_mentioned.append('pro')
-            if 'enterprise' in response_text.lower():
-                plans_mentioned.append('enterprise')
+            # ABSOLUTE FINAL DOMAIN FIX - One more pass to catch any remaining issues
+            # Extract domains from user input one more time for final check
+            user_domains = re.findall(r'\b([a-zA-Z0-9-]+\.[a-zA-Z]{2,})\b', user_input, re.IGNORECASE)
+            for domain in user_domains:
+                clean_domain = domain.lower().strip()
+                # Find and replace ANY variation of this domain
+                domain_name = clean_domain.split('.')[0]
+                domain_ext = clean_domain.split('.')[-1]
 
-            # If not all three plans are mentioned, replace with complete pricing
-            if len(plans_mentioned) < 3:
-                complete_pricing = """Free Plan
-• 5 websites
-• All SEO tools
-• 0/month
+                # Create a super aggressive pattern that catches ANY variation
+                # This will match: domain. com, domain .com, domain. Com, domain .Com, etc.
+                super_pattern = rf'{re.escape(domain_name)}\s*\.\s*{re.escape(domain_ext)}'
+                response_text = re.sub(super_pattern, clean_domain, response_text, flags=re.IGNORECASE)
 
-Pro Plan
-• 50 websites
-• Priority support
-• 49/month
+                # Also fix if the extension got capitalized
+                wrong_domain = f'{domain_name}.{domain_ext.capitalize()}'
+                response_text = response_text.replace(wrong_domain, clean_domain)
+                wrong_domain = f'{domain_name}. {domain_ext.capitalize()}'
+                response_text = response_text.replace(wrong_domain, clean_domain)
+                wrong_domain = f'{domain_name} . {domain_ext.capitalize()}'
+                response_text = response_text.replace(wrong_domain, clean_domain)
 
-Enterprise
-• Unlimited sites
-• Dedicated manager
-• Custom pricing"""
+            # CRITICAL: Filter out mentions of other SEO tools
+            response_text = filter_other_tools(response_text)
 
-                # Preserve follow-up question if exists
-                if "Have I resolved your query?" in response_text:
-                    response_text = complete_pricing + "\n\nHave I resolved your query?"
-                else:
-                    response_text = complete_pricing
+            # Update FAST MCP with bot response
+            if "fast_mcp" in session_state:
+                session_state["fast_mcp"].update_context("assistant", response_text)
 
-        # ABSOLUTE FINAL DOMAIN FIX - One more pass to catch any remaining issues
-        # Extract domains from user input one more time for final check
-        user_domains = re.findall(r'\b([a-zA-Z0-9-]+\.[a-zA-Z]{2,})\b', user_input, re.IGNORECASE)
-        for domain in user_domains:
-            clean_domain = domain.lower().strip()
-            # Find and replace ANY variation of this domain
-            domain_name = clean_domain.split('.')[0]
-            domain_ext = clean_domain.split('.')[-1]
+            # Check if the response ends with "Have I resolved your query?"
+            if response_text.strip().endswith("Have I resolved your query?"):
+                session_state["last_bot_message_ends_with_query_solved"] = True
+            else:
+                session_state["last_bot_message_ends_with_query_solved"] = False
 
-            # Create a super aggressive pattern that catches ANY variation
-            # This will match: domain. com, domain .com, domain. Com, domain .Com, etc.
-            super_pattern = rf'{re.escape(domain_name)}\s*\.\s*{re.escape(domain_ext)}'
-            response_text = re.sub(super_pattern, clean_domain, response_text, flags=re.IGNORECASE)
+            # Add bot response to chat history
+            bot_message = {
+                "role": "assistant",
+                "content": response_text,
+                "timestamp": datetime.now(),
+                "show_feedback": True
+            }
+            session_state["chat_history"].append(bot_message)
 
-            # Also fix if the extension got capitalized
-            wrong_domain = f'{domain_name}.{domain_ext.capitalize()}'
-            response_text = response_text.replace(wrong_domain, clean_domain)
-            wrong_domain = f'{domain_name}. {domain_ext.capitalize()}'
-            response_text = response_text.replace(wrong_domain, clean_domain)
-            wrong_domain = f'{domain_name} . {domain_ext.capitalize()}'
-            response_text = response_text.replace(wrong_domain, clean_domain)
+            return response_text.strip()
 
-        # CRITICAL: Filter out mentions of other SEO tools
-        response_text = filter_other_tools(response_text)
-
-        return response_text.strip()
     except Exception as e:
         logger.error(f"Error generating AI response: {str(e)}")
         logger.error(f"Error type: {type(e).__name__}")
@@ -2665,40 +2897,6 @@ support@novarsistech.com"""
     else:
         response = get_ai_response(request.message, request.image_data, session_state["chat_history"])
         show_feedback = True  # Already True
-
-    # Update FAST MCP with bot response
-    if "fast_mcp" in session_state:
-        session_state["fast_mcp"].update_context("assistant", response)
-
-    # Check if the response ends with "Have I resolved your query?"
-    if response.strip().endswith("Have I resolved your query?"):
-        session_state["last_bot_message_ends_with_query_solved"] = True
-    else:
-        session_state["last_bot_message_ends_with_query_solved"] = False
-
-    # Add bot response to chat history
-    bot_message = {
-        "role": "assistant",
-        "content": response,
-        "timestamp": datetime.now(),
-        "show_feedback": show_feedback
-    }
-    session_state["chat_history"].append(bot_message)
-
-    # Save assistant response to MongoDB with user prompt reference
-    if db and db.is_connected():
-        try:
-            # Save assistant message with reference to the user's prompt
-            assistant_message_id = db.save_message(
-                session_id=session_id,
-                role="assistant",
-                content=response,
-                image_data=None,  # Assistant doesn't have image data
-                user_prompt=request.message  # Store the user's prompt that triggered this response
-            )
-            logger.info(f"Saved assistant response with user prompt reference: {assistant_message_id}")
-        except Exception as e:
-            logger.error(f"Failed to save assistant response to MongoDB: {str(e)}")
 
     # Don't send suggestions with response anymore since we're doing real-time
     # Mobile-optimized response with additional metadata

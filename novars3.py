@@ -55,8 +55,8 @@ class ChatDatabase:
         self.db = None
 
         try:
-            # HARDCODED MongoDB connection string - No .env needed!
-            connection_string = "mongodb+srv://gurudattamanpreet:gurudattamanpreet@novarsischatbot.pd2nd6d.mongodb.net/?retryWrites=true&w=majority&appName=NovarsisChatbot"
+            
+            connection_string = os.getenv('MONGODB_CONNECTION_STRING')
 
             # Direct connection - no environment variables needed
             if not connection_string:
@@ -384,7 +384,7 @@ GROQ_MODEL = "llama-3.3-70b-versatile"  # <-- Latest and most versatile Groq mod
 # - "gemma-7b-it" - Gemma 7B (fastest)
 
 # API Configuration
-GROQ_API_KEY = "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"  # Your Groq API key
+GROQ_API_KEY = os.getenv('GROQ_API_KEY')
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"  # Groq API endpoint
 
 # You can also use environment variables if you prefer:

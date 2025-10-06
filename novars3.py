@@ -55,7 +55,6 @@ class ChatDatabase:
         self.db = None
 
         try:
-            
             connection_string = os.getenv('MONGODB_CONNECTION_STRING')
 
             # Direct connection - no environment variables needed
@@ -730,38 +729,133 @@ def get_mobile_quick_actions(response: str) -> list:
 
 
 def get_context_suggestions(message: str) -> list:
-    """Get relevant quick reply suggestions based on user's input context - MOBILE OPTIMIZED."""
-    # Don't show suggestions for very short input (less than 3 characters)
-    if not message or len(message.strip()) < 3:
+    """Get relevant quick reply suggestions based on user's input context - NOVARSIS SEO TOOL SPECIFIC."""
+    # Don't show suggestions for very short input (less than 2 characters)
+    if not message or len(message.strip()) < 2:
         return []
 
     message_lower = message.lower().strip()
 
     # Return empty if message is still too short after stripping
-    if len(message_lower) < 3:
+    if len(message_lower) < 2:
         return []
 
-    # Check for keywords and return appropriate suggestions
-    if any(
-            word in message_lower for word in ['seo', 'analysis', 'analyze', 'score', 'optimization', 'meta', 'crawl']):
-        return QUICK_REPLY_SUGGESTIONS["seo_analysis"][:3]  # Max 3 for mobile
-    elif any(word in message_lower for word in
-             ['account', 'subscription', 'plan', 'billing', 'payment', 'upgrade', 'cancel']):
-        return QUICK_REPLY_SUGGESTIONS["account"][:3]
-    elif any(word in message_lower for word in
-             ['error', 'issue', 'problem', 'not working', 'failed', 'stuck', 'broken']):
-        return QUICK_REPLY_SUGGESTIONS["error"][:3]
-    elif any(word in message_lower for word in ['report', 'export', 'pdf', 'schedule', 'download']):
-        return QUICK_REPLY_SUGGESTIONS["report"][:3]
-    elif any(word in message_lower for word in ['api', 'integration', 'technical', 'login', 'password']):
-        return QUICK_REPLY_SUGGESTIONS["technical"][:3]
-    elif any(word in message_lower for word in ['price', 'pricing', 'cost', 'plan', 'cheap', 'expensive', 'free']):
-        return QUICK_REPLY_SUGGESTIONS["pricing"][:3]
-    elif any(word in message_lower for word in ['how', 'what', 'why', 'when', 'where']):
-        # For question words, show initial helpful suggestions
-        return QUICK_REPLY_SUGGESTIONS["initial"][:3]  # Max 3 for mobile
+    # NOVARSIS SEO TOOL SPECIFIC SUGGESTIONS based on user's typed words
+    suggestions = []
+    
+    # Check for specific keywords and return ONLY Novarsis SEO Tool related suggestions
+    if any(word in message_lower for word in ['seo', 'site', 'website', 'analyze', 'check', 'audit']):
+        suggestions = [
+            "Analyze my website SEO score",
+            "Check website meta tags",
+            "View SEO audit report"
+        ]
+    elif any(word in message_lower for word in ['keyword', 'rank', 'search']):
+        suggestions = [
+            "Track keyword rankings",
+            "Find competitor keywords",
+            "Check search visibility"
+        ]
+    elif any(word in message_lower for word in ['backlink', 'link']):
+        suggestions = [
+            "Check my backlinks",
+            "Monitor backlink quality",
+            "Find broken links"
+        ]
+    elif any(word in message_lower for word in ['page', 'speed', 'load', 'performance']):
+        suggestions = [
+            "Check page load speed",
+            "Analyze Core Web Vitals",
+            "Mobile performance test"
+        ]
+    elif any(word in message_lower for word in ['mobile', 'responsive']):
+        suggestions = [
+            "Test mobile optimization",
+            "Check responsive design",
+            "Mobile SEO audit"
+        ]
+    elif any(word in message_lower for word in ['competitor', 'compare']):
+        suggestions = [
+            "Analyze competitor SEO",
+            "Compare domain authority",
+            "Track competitor keywords"
+        ]
+    elif any(word in message_lower for word in ['meta', 'tag', 'title', 'description']):
+        suggestions = [
+            "Optimize meta tags",
+            "Fix title length issues",
+            "Add meta descriptions"
+        ]
+    elif any(word in message_lower for word in ['error', 'issue', 'problem', 'fix']):
+        suggestions = [
+            "Fix SEO errors",
+            "Resolve crawl issues",
+            "Check error report"
+        ]
+    elif any(word in message_lower for word in ['report', 'export', 'pdf']):
+        suggestions = [
+            "Generate SEO report",
+            "Export report to PDF",
+            "Schedule automatic reports"
+        ]
+    elif any(word in message_lower for word in ['account', 'subscription', 'plan', 'billing']):
+        suggestions = [
+            "Check my subscription plan",
+            "Upgrade to Pro plan",
+            "View billing history"
+        ]
+    elif any(word in message_lower for word in ['price', 'pricing', 'cost', 'free']):
+        suggestions = [
+            "View pricing plans",
+            "Compare Free vs Pro plan",
+            "Enterprise plan details"
+        ]
+    elif any(word in message_lower for word in ['schema', 'structured', 'markup']):
+        suggestions = [
+            "Add schema markup",
+            "Validate structured data",
+            "Fix schema errors"
+        ]
+    elif any(word in message_lower for word in ['sitemap', 'xml']):
+        suggestions = [
+            "Generate XML sitemap",
+            "Submit sitemap to Google",
+            "Check sitemap errors"
+        ]
+    elif any(word in message_lower for word in ['robots', 'txt', 'crawl']):
+        suggestions = [
+            "Check robots.txt file",
+            "Allow/disallow crawlers",
+            "Fix crawl blocking"
+        ]
+    elif any(word in message_lower for word in ['ssl', 'https', 'secure']):
+        suggestions = [
+            "Check SSL certificate",
+            "Enable HTTPS",
+            "Fix mixed content errors"
+        ]
+    elif any(word in message_lower for word in ['duplicate', 'content']):
+        suggestions = [
+            "Find duplicate content",
+            "Fix canonical URLs",
+            "Remove duplicate pages"
+        ]
+    elif any(word in message_lower for word in ['how', 'what', 'help']):
+        suggestions = [
+            "How to use Novarsis SEO Tool?",
+            "What is SEO score?",
+            "Get started guide"
+        ]
     else:
-        return []
+        # Default Novarsis SEO Tool suggestions
+        suggestions = [
+            "Analyze website SEO",
+            "Check current plan",
+            "View features"
+        ]
+    
+    # Return only Novarsis SEO tool related suggestions (max 3 for mobile)
+    return suggestions[:3]
 
 
 # Novarsis Keywords - expanded for better detection
